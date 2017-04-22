@@ -1,0 +1,15 @@
+syntax = "proto2";
+package RectData;
+message PictureData {
+    required int32 height = 1;
+    required int32 width  = 2;
+    repeated ObjectParam object_parameter = 3;
+}
+
+message ObjectParam {
+    repeated string tag = 1;
+    required int32  xmin = 2;
+    required int32  ymin = 3;
+    required int32  xmax = 4;
+    required int32  ymax = 5;
+}

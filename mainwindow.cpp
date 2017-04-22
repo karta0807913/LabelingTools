@@ -1,0 +1,1165 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+//#define YOLO_V2
+#ifndef YOLO_V2
+#include "yolo_output.h"
+#else
+#include "yolo_v2_output.h"
+#endif
+
+#include <QRect>
+#include <QTime>
+#include "socketgraphicsitem.h"
+#include <QDomDocument>
+
+const int predictBoxNum = 2;
+const int splitScreenNum = 7;
+
+const int classNumber = 5;
+const float twoBoxArea = 0;
+const float confidenceLimit = 0.8f;
+
+#ifndef YOLO_V2
+const char protoFilePath[]  =
+        "/media/e419/4A9D773A59A2CB48/yolo_gnet/yolo_gnet_deploy.prototxt";
+const char caffeModelPath[] =
+        "/media/e419/4A9D773A59A2CB48/yolo_gnet/models_400000/gnet_yolo_iter_90000.caffemodel";
+const char meanFilePath[]   =
+        "/media/e419/4A9D773A59A2CB48/adasDB/ForTrain/lmdb/train_mean.binaryproto";
+#else
+const char protoFilePath[]  =
+        "/home/e419/Desktop/prototxt/darknet.prototxt";
+const char caffeModelPath[] =
+        "/home/e419/caffe/examples/yolo/models/darknet_iter_30000.caffemodel";
+const char meanFilePath[]   =
+        "/home/e419/caffe-yolo/data/yolo/lmdb/416x416_senpai_dataBase.binaryproto";
+//        "/home/e419/caffe-yolo/data/yolo/lmdb/senpai_mean.binaryproto";
+#endif
+#ifdef YOLO_V2
+//std::vector<float> bias = {0.39903296005,
+//                           0.38387913675,
+//                           1.07685741505,
+//                           0.82857831260,
+//                           0.14642432766,
+//                           0.17379632345,
+//                           2.19841344367,
+//                           2.11080163250,
+//                           0.43343092734,
+//                           1.00408027394 };
+std::vector<float> bias = {0.14249932,
+                           0.16662139,
+                           0.37634214,
+                           0.82304634,
+                           0.22170075,
+                           0.39797696,
+                           0.590625,
+                           0.39301576,
+                           0.04730832,
+                           0.07110102 };
+
+//std::vector<float> bias = {1.08,
+//                           1.09,
+//                           3.42,
+//                           4.41,
+//                           6.63,
+//                           11.38,
+//                           9.42,
+//                           5.11,
+//                           16.62,
+//                           10.52
+//                           };
+#endif
+
+//this must be const
+//const QString classes[] = {"Car", "Motorcycle", "Pedestrian", "Semaphore", "Bicycle"};
+//const QString
+//     classes[] = {"uncovered", "cap", "mask", "sunglasses", "hand_cover",
+//                  "gloves_cover",
+//                  "helmet_sunglasses",
+//                  "helmet_sunglasses_hand_cover",
+//                  "helmet_sunglasses_mask",
+//                  "helmet_mask",
+//                  "helmet_hand_cover",
+//                  "helmet_gloves_cover",
+//                  "cap_sunglasses",
+//                  "cap_sunglasses_mask",
+//                  "cap_sunglasses_hand_cover",
+//                  "cap_sunglasses_mask_hand_cover",
+//                  "cap_mask",
+//                  "cap_hand_cover",
+//                  "cap_gloves_cover",
+//                  "sunglasses_mask",
+//                  "sunglasses_mask_gloves_cover",
+//                  "sunglasses_mask_hand_cover",
+//                  "sunglasses_hand_cover",
+//                  "sunglasses_gloves_cover",
+//                  "mask_hand_cover",
+//                  "helmet"};
+
+//const QString classes[] = {"uncovered",
+//                           "cap",
+//                           "mask",
+//                           "helmet",
+//                           "sunglasses",
+//                           "cap_sunglasses",
+//                           "cap_mask"};
+
+const QString classes[] = {"uncovered",
+                           "cap",
+                           "mask",
+                           "helmet",
+                           "sunglasses",
+                           "cap_sunglasses",
+                           "cap_mask",
+                           "cap_sunglasses_mask"};
+
+
+
+#ifdef YOLO_V2
+using namespace yolo_v2;
+#else
+using namespace yolo;
+#endif
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+
+    loadSetting();
+
+#ifdef USE_CAFFE_
+    net = new NetForward(protoFilePath, caffeModelPath, meanFilePath, caffe::TEST);
+#endif
+
+    ui->widget->setGeometry(QRect(10,10,MAX_IMAGE_SIZE,MAX_IMAGE_SIZE));
+
+    ui->widget->setDeleteHotKey(Qt::Key_Space);
+
+    opctionsWindow.setRecallFunction(this);
+
+    CreateMode = new DearMode<DrawRect, GraphicScene>   (ui->widget->getMainScene());
+    SelectMode = new DearMode<SelectRect, GraphicScene> (ui->widget->getMainScene());
+    ResizeMode = new DearMode<RectResize, GraphicScene> (ui->widget->getMainScene());
+
+    connect(ui->Export      , SIGNAL(clicked()), this, SLOT(saveFile()));
+    connect(ui->addItem     , SIGNAL(clicked()), this, SLOT(addItem()));
+    connect(ui->deleteItem  , SIGNAL(clicked()), this, SLOT(deleteItem()));
+    connect(ui->comboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(comboBoxChanged(QString)));
+
+    connect(ui->actionOpenFile  , SIGNAL(triggered()), this, SLOT(openFile()));
+    connect(ui->actionOpenFloder, SIGNAL(triggered()), this, SLOT(openFloder()));
+    connect(ui->actionModify    , SIGNAL(triggered()), this, SLOT(modifyData()));
+    connect(ui->actionFrame     , SIGNAL(triggered()), this, SLOT(setCreateMode()));
+    connect(ui->actionArror     , SIGNAL(triggered()), this, SLOT(setSelectMode()));
+    connect(ui->actionScaling   , SIGNAL(triggered()), this, SLOT(setResizeMode()));
+    connect(ui->actionUp        , SIGNAL(triggered()), this, SLOT(videoPrvFrame()));
+    connect(ui->actionUp        , SIGNAL(triggered()), this, SLOT(prvImage()));
+    connect(ui->actionDown      , SIGNAL(triggered()), this, SLOT(videoNexFrame()));
+    connect(ui->actionDown      , SIGNAL(triggered()), this, SLOT(nextImage()));
+    connect(ui->actionOpctions  , SIGNAL(triggered()), this, SLOT(setOpctions()));
+
+    connect(ui->VideoSlider     , SIGNAL(valueChanged(int)), this, SLOT(videoSliderChanged(int)));
+    connect(ui->FrameStep       , SIGNAL(valueChanged(int)), this, SLOT(videoStepChange(int)));
+
+    connect(ui->widget          , SIGNAL(itemNumberChanged(int)), this, SLOT(widghtItemNumberChange(int)));
+
+    ui->ImageNum->setVisible(false);
+
+    updateShortcut();
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+    case Qt::Key_1: ui->comboBox->setCurrentIndex(0); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_2: ui->comboBox->setCurrentIndex(1); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_3: ui->comboBox->setCurrentIndex(2); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_4: ui->comboBox->setCurrentIndex(3); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_5: ui->comboBox->setCurrentIndex(4); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_6: ui->comboBox->setCurrentIndex(5); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_7: ui->comboBox->setCurrentIndex(6); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_8: ui->comboBox->setCurrentIndex(7); comboBoxChanged(ui->comboBox->currentText()); break;
+    case Qt::Key_9: ui->comboBox->setCurrentIndex(8); comboBoxChanged(ui->comboBox->currentText()); break;
+
+    case Qt::Key_Enter: // input frame(image) number change
+        int numIndex = ui->ImageNum->text().split('/')[0].toInt();
+        if(numIndex == now_Index)
+            break;
+        if(numIndex > total_Image){
+            updateUI();
+            break;
+        }
+
+        if(!videoCapture.isOpened() && filePathList.empty())
+            return;
+
+        if(videoCapture.isOpened() && numIndex == 0)
+            numIndex += 1;
+
+        threadContorler = true;
+
+        now_Index = numIndex;
+
+        cv::Mat img;
+        if(videoCapture.isOpened()){
+            img = getVideoImage(now_Index);
+            setImage(img);
+        }
+        else if(!filePathList.empty())
+        {
+            img = cv::imread(filePathList[now_Index].absoluteFilePath().toLocal8Bit().data());
+            setImage(img, txtDir + filePathList[now_Index].baseName() + ".prototxt");
+            fileName = filePathList[now_Index].baseName();
+        }
+        else
+        {
+            ui->VideoSlider->setValue(0);
+            threadContorler = false;
+            return;
+        }
+
+        updateUI();
+
+        threadContorler = false;
+        break;
+    }
+}
+
+void MainWindow::updateUI()
+{
+    ui->ImageNum->setVisible(videoCapture.isOpened() || !filePathList.empty());
+    if(ui->ImageNum->isVisible())
+    {
+        ui->ImageNum->setText(QString::number(now_Index));
+
+        QString total(QString::number(total_Image));
+        QString inputMask;
+        for(int index = 0; index < total.length(); ++index)
+            inputMask += "9";
+        inputMask += "/";
+        foreach (const QChar c, total) {
+            if(c == '9' || c == '0')
+                inputMask += '\\';
+            inputMask += c;
+        }
+        ui->ImageNum->setInputMask(inputMask);
+    }
+    ui->fileNameLabel->setText(fileName);
+    ui->VideoSlider->setValue(static_cast<float>(now_Index) / total_Image * 100);
+}
+
+void MainWindow::updateShortcut()
+{
+    ui->actionFrame     ->setShortcut(opctionsWindow.frameShortcut);
+    ui->actionArror     ->setShortcut(opctionsWindow.arrorShortcut);
+    ui->actionScaling   ->setShortcut(opctionsWindow.scalingShortcut);
+    ui->actionUp        ->setShortcut(opctionsWindow.upShortcut);
+    ui->actionDown      ->setShortcut(opctionsWindow.downShortcut);
+    ui->Export          ->setShortcut(opctionsWindow.exportShortcut);
+}
+
+
+void MainWindow::setCreateMode()
+{
+    ui->actionArror->setChecked(false);
+    ui->actionScaling->setChecked(false);
+    ui->widget->setSelectAble(false);
+    ui->widget->setSelectMode(CreateMode);
+}
+
+void MainWindow::setSelectMode()
+{
+    ui->actionFrame->setChecked(false);
+    ui->actionScaling->setChecked(false);
+    ui->widget->setSelectAble(true);
+    ui->widget->setSelectMode(SelectMode);
+}
+
+void MainWindow::setResizeMode()
+{
+    ui->actionFrame->setChecked(false);
+    ui->actionArror->setChecked(false);
+    ui->widget->setSelectAble(true);
+    ui->widget->setSelectMode(ResizeMode);
+}
+
+void MainWindow::openFile()
+{
+    //QString selfilter = tr("IMG (*.jpg *.jpeg *.png)");
+    QString imagePath = QFileDialog::getOpenFileName(this, "SelectImage", filePath,
+                                                     "All files (*.jpg *.jpeg *.png *.bmp *.mp4 *.avi *.wmv *.mov);;\
+                                                      JPEG (*.jpg *.jpeg);;PNG (*.png);;\
+                                                      BMP (*.bmp);;\
+                                                      Movie Files(*.mp4 *.avi *.wmv *.mov)");
+
+    if(imagePath == "")
+        return;
+
+    QFileInfo info(imagePath);
+    fileName = info.baseName();
+    filePath = info.absolutePath();
+    QString bundleName = imagePath.split(fileName).back();
+    bundleName = bundleName.toLower();
+
+    cv::Mat img;
+
+    if(bundleName == ".mp4" ||
+       bundleName == ".avi" ||
+       bundleName == ".wmv" ||
+       bundleName == ".mov")
+    {
+        img = openVideo(imagePath);
+    }
+    else
+    {
+        img = openImage(imagePath);
+    }
+
+    if(img.empty())
+        return;
+
+    setImage(img);
+    updateShortcut();
+}
+
+void MainWindow::openFloder()
+{
+    QString path = QFileDialog::getExistingDirectory(
+                NULL,
+                "Open Floder",
+                filePath,
+                QFileDialog::ShowDirsOnly);
+
+    if(path == "")
+        return;
+    filePath = path;
+
+    QStringList nameFilters;
+    nameFilters << QString("*.jpeg") << QString("*.jpg")
+                << QString("*.png") << QString("*.bmp");
+    QDir dir(path + "/");
+
+    if(dir.exists()){
+        dir.setNameFilters(nameFilters);
+
+        /**/
+        filePathList.clear();
+        txtDir = "";
+
+        threadContorler = true;
+        foreach(QFileInfo fileInfo , dir.entryInfoList(nameFilters))
+            filePathList.append(fileInfo);
+
+        if(filePathList.empty())
+            return;
+
+        now_Index = 0;
+        total_Image = filePathList.length() - 1;
+
+        cv::Mat img = cv::imread(filePathList[now_Index].absoluteFilePath().toLocal8Bit().data());
+        fileName = filePathList[now_Index].baseName();
+
+        setImage(img);
+
+        updateUI();
+        threadContorler = false;
+        /**/
+
+        videoCapture.release();
+        updateShortcut();
+    }
+}
+
+cv::Mat MainWindow::openImage(QString path)
+{
+    videoCapture.release();
+    filePathList.clear();
+    updateUI();
+    return cv::imread(path.toLocal8Bit().constData(),  CV_LOAD_IMAGE_COLOR);
+}
+
+cv::Mat MainWindow::openVideo(QString path)
+{
+    if(videoCapture.open(path.toLocal8Bit().data()))
+    {
+        threadContorler = true;
+        now_Index = 1;
+        total_Image = videoCapture.get(CV_CAP_PROP_FRAME_COUNT) - 1;
+        ui->fileNameLabel->setText(fileName);
+        updateUI();
+
+        filePathList.clear();
+        threadContorler = false;
+        return getVideoImage(now_Index);
+    }
+    return cv::Mat();
+}
+
+void MainWindow::modifyData()
+{
+    QString path = QFileDialog::getExistingDirectory(
+                NULL,
+                "Select Image Floder",
+                filePath,
+                QFileDialog::ShowDirsOnly);
+
+    if(path == "")
+        return;
+
+    txtDir = QFileDialog::getExistingDirectory(
+                    NULL,
+                    "Select Text Floder",
+                    filePath,
+                    QFileDialog::ShowDirsOnly);
+
+    if(txtDir == "")
+        return;
+
+    filePath = path;
+    txtDir += "/";
+
+    QStringList nameFilters;
+    nameFilters << QString("*.jpeg") << QString("*.jpg")
+                << QString("*.png") << QString("*.bmp");
+    QDir dir(path + "/");
+
+    if(dir.exists()){
+        dir.setNameFilters(nameFilters);
+
+        /**/
+        filePathList.clear();
+
+        threadContorler = true;
+        foreach(QFileInfo fileInfo , dir.entryInfoList(nameFilters))
+            filePathList.append(fileInfo);
+
+        if(filePathList.empty())
+            return;
+
+        now_Index = 0;
+        total_Image = filePathList.length() - 1;
+
+        cv::Mat img = cv::imread(filePathList[now_Index].absoluteFilePath().toLocal8Bit().data());
+        fileName = filePathList[now_Index].baseName();
+
+        setImage(img, txtDir + filePathList[now_Index].baseName() + ".prototxt");
+
+        updateUI();
+        threadContorler = false;
+        /**/
+
+        videoCapture.release();
+        updateShortcut();
+    }
+
+}
+
+cv::Mat MainWindow::getVideoImage(int index)
+{
+    videoCapture.set(CV_CAP_PROP_POS_FRAMES, index);
+    cv::Mat img;
+    videoCapture.read(img);
+    return img;
+}
+
+void MainWindow::videoPrvFrame()
+{
+    if(threadContorler || !videoCapture.isOpened() || now_Index - video_Step < 1)
+        return;
+
+    // !!!lock the process, do not remove it!!!
+    threadContorler = true;
+
+    cv::Mat img = getVideoImage(now_Index -= video_Step);
+
+    setImage(img);
+    updateUI();
+
+    // !!!lock the process, do not remove it!!!
+    threadContorler = false;
+}
+
+void  MainWindow::prvImage()
+{
+    if(filePathList.empty())
+        return;
+    if(now_Index == 0)
+        return;
+
+    if(threadContorler)
+        return;
+    threadContorler = true;
+
+    cv::Mat img = cv::imread(filePathList[--now_Index].absoluteFilePath().toLocal8Bit().data());
+
+    if(img.empty())
+    {
+        threadContorler = false;
+        return;
+    }
+    fileName = filePathList[now_Index].baseName();
+    setImage(img, txtDir + filePathList[now_Index].baseName() + ".prototxt");
+
+    updateUI();
+
+    threadContorler = false;
+}
+
+void MainWindow::videoNexFrame()
+{
+    if(!videoCapture.isOpened() || now_Index + video_Step > total_Image){
+        if(filePathList.empty())
+            openFile();
+        return;
+    }
+
+    // !!!lock the process, do not remove it!!!
+    if(threadContorler)
+        return;
+    threadContorler = true;
+
+    cv::Mat img = getVideoImage(now_Index += video_Step);
+
+    setImage(img);
+    updateUI();
+
+    // !!!lock the process, do not remove it!!!
+    threadContorler = false;
+}
+
+void MainWindow::nextImage()
+{
+    if(filePathList.empty())
+        return;
+    if(now_Index == total_Image)
+        return;
+
+    if(threadContorler)
+        return;
+    threadContorler = true;
+
+    cv::Mat img = cv::imread(filePathList[++now_Index].absoluteFilePath().toLocal8Bit().data());
+
+    if(img.empty())
+    {
+        threadContorler = false;
+        return;
+    }
+    fileName = filePathList[now_Index].baseName();
+    setImage(img, txtDir + filePathList[now_Index].baseName() + ".prototxt");
+
+    updateUI();
+
+    threadContorler = false;
+}
+
+#ifdef USE_CAFFE_
+void MainWindow::predictionBoxAndDraw(cv::Mat &img)
+{
+    ui->widget->deleteAllItems();
+    cv::Mat mat = fillUpImageToSqure(img);
+    QTime time;
+    time.start();
+    std::vector<float> res = net->forward(mat);
+    std::cout << time.elapsed() << std::endl;
+
+#ifndef YOLO_V2
+    QList<DATA> dataList = getList(res, classNumber, predictBoxNum, splitScreenNum);
+
+    getPredictBoxes(dataList, confidenceLimit, twoBoxArea);
+
+    for(auto iterator = dataList.begin(); iterator != dataList.end(); ++iterator)
+    {
+        float w = *iterator->w;
+        float h = *iterator->h;
+        float x = *iterator->x - w / 2;
+        float y = *iterator->y - h / 2;
+        w += x;
+        h += y;
+        if(x < 0)
+            x = 0;
+        if(y < 0)
+            y = 0;
+
+        std::map<QString, QColor>::iterator color = classMap.find(classes[iterator->classIndex]);
+
+        QList<QString> classList;
+        classList.push_back(classes[iterator->classIndex]);
+
+        if(color != classMap.end())
+            ui->widget->addRectItem(x, y, w, h, color->second, classList);
+        else{
+            int R = qrand() % 255;
+            int G = qrand() % 255;
+            int B = qrand() % 255;
+            classMap[classes[iterator->classIndex]] = QColor(R, G, B);
+            ui->widget->addRectItem(x, y, w, h,
+                                    classMap[classes[iterator->classIndex]], classList);
+
+            ui->comboBox->addItem(classes[iterator->classIndex]);
+            updateComboBoxColor();
+        }
+    }
+#else
+
+    std::vector<DATA> finalRes = getResult<predictBoxNum, splitScreenNum>(res, bias, classNumber,
+                                                          confidenceLimit, twoBoxArea);
+    for(auto iterator = finalRes.begin(); iterator != finalRes.end(); ++iterator)
+    {
+        float w = iterator->w;
+        float h = iterator->h;
+        float x = iterator->x - w / 2;
+        float y = iterator->y - h / 2;
+        w += x;
+        h += y;
+        if(x < 0)
+            x = 0;
+        if(y < 0)
+            y = 0;
+
+        std::map<QString, QColor>::iterator color = classMap.find(classes[iterator->classIndex]);
+
+        QList<QString> classList;
+        classList.push_back(classes[iterator->classIndex]);
+
+        if(color != classMap.end())
+            ui->widget->addRectItem(x, y, w, h, color->second, classList);
+        else{
+            int R = qrand() % 255;
+            int G = qrand() % 255;
+            int B = qrand() % 255;
+            classMap[classes[iterator->classIndex]] = QColor(R, G, B);
+            ui->widget->addRectItem(x, y, w, h,
+                                    classMap[classes[iterator->classIndex]], classList);
+
+            ui->comboBox->addItem(classes[iterator->classIndex]);
+            updateComboBoxColor();
+        }
+    }
+#endif
+}
+#endif
+
+void MainWindow::saveFile()
+{
+    if(fileName == "")
+        return;
+
+    QStringList list = fileName.split(' ');
+    QString saveFileName;
+    foreach (QString pice, list) {
+        saveFileName += pice;
+    }
+    ui->widget->setSelectAble(false);
+    ui->widget->setSelectMode(CreateMode);
+
+    QList<QGraphicsItem*> graphicItem = ui->widget->items();
+    if(graphicItem.count() < 4)
+        return;
+
+    QDir saveDir;
+    if(videoCapture.isOpened())
+    {
+        saveDir.setPath(opctionsWindow.getOutPutPath() + "/" + saveFileName);
+        if(!saveDir.exists())
+            QDir().mkdir(saveDir.path());
+    } else
+    {
+        saveDir.setPath(opctionsWindow.getOutPutPath() + "/Images");
+        if(!saveDir.exists())
+            QDir().mkdir(saveDir.path());
+    }
+
+
+    QDir saveDir_txt(saveDir.path() + "/proto");
+    if(!saveDir_txt.exists())
+        QDir().mkdir(saveDir_txt.path());
+
+    QDir saveDir_img(saveDir.path() + "/image");
+    if(!saveDir_img.exists())
+        QDir().mkdir(saveDir_img.path());
+
+    QDir saveDir_xml(saveDir.path() + "/xml");
+    if(!saveDir_xml.exists())
+        QDir().mkdir(saveDir_xml.path());
+
+    QFile txtFile;
+    QFile xmlFile;
+    if(videoCapture.isOpened())
+    {
+        txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + "_" + QString::number(now_Index) + ".prototxt");
+        xmlFile.setFileName(saveDir_xml.path() + "/" + saveFileName + "_" + QString::number(now_Index) + ".xml");
+    }
+    else
+    {
+        txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + ".prototxt");
+        xmlFile.setFileName(saveDir_xml.path() + "/" + saveFileName + ".xml");
+    }
+
+    if(txtFile.open(QIODevice::WriteOnly) && xmlFile.open(QIODevice::WriteOnly)){
+        QTextStream out(&txtFile);
+
+        /* xml init */
+        QDomDocument doc;
+        QDomProcessingInstruction instruction = doc.createProcessingInstruction("xml","version=\"1.0\" encoding=\"UTF-8\"");
+        doc.appendChild(instruction);
+
+        QDomElement annotation = doc.createElement("annotation");
+        doc.appendChild(annotation);
+
+        QDomElement size = doc.createElement("size");
+        doc.appendChild(size);
+        annotation.appendChild(size);
+
+        int originWidth  = ui->widget->getOriginImage().cols,
+            originHeight = ui->widget->getOriginImage().rows;
+
+        QDomElement width = doc.createElement("width");
+        QDomText width_text = doc.createTextNode(
+                    QString::number(originWidth));
+        size.appendChild(width);
+        width.appendChild(width_text);
+
+        QDomElement height = doc.createElement("height");
+        QDomText height_text = doc.createTextNode(
+                    QString::number(originHeight));
+        size.appendChild(height);
+        height.appendChild(height_text);
+
+        QDomElement channels = doc.createElement("depth");
+        QDomText channels_text = doc.createTextNode(
+                    QString::number(ui->widget->getOriginImage().channels()));
+        size.appendChild(channels);
+        channels_text.appendChild(channels_text);
+
+        /* end */
+
+        RectData::PictureData pictureData;
+        pictureData.set_width(originWidth);
+        pictureData.set_height(originHeight);
+
+        foreach (QGraphicsItem *item, graphicItem) {
+            if(item->type() == SocketGraphicsItem::Type){
+                SocketGraphicsItem *rectItem = static_cast<SocketGraphicsItem*>(item);
+                QList<QString> classList = rectItem->getClasses();
+                if(!classList.empty())
+                {
+                    /* save to txt */
+                    QRectF rect = rectItem->mapRectToScene(rectItem->boundingRect());
+
+                    int   x = (float)rect.x() * ((float)originWidth / ui->widget->rect().width()),
+                            y = (float)rect.y() * ((float)originHeight / ui->widget->rect().height()),
+                            w = (float)rect.width() * ((float)originWidth / ui->widget->rect().width()),
+                            h = (float)rect.height() * ((float)originHeight / ui->widget->rect().height());
+
+                    if(x < 0)
+                        x = 0;
+                    if(x > originWidth)
+                        x = originWidth;
+                    if(x + w > originWidth)
+                        w = (originWidth - x);
+                    if(y < 0)
+                        y = 0;
+                    if(y > originHeight)
+                        y = originHeight;
+                    if(y + h > originHeight)
+                        h =(originHeight - y);
+
+                    RectData::ObjectParam* object_param = pictureData.add_object_parameter();
+                    object_param->set_xmin(x);
+                    object_param->set_ymin(y);
+                    object_param->set_xmax(x + w);
+                    object_param->set_ymax(y + h);
+
+                    for(auto iterator = classList.begin(); iterator != classList.end(); ++iterator){
+                        std::string* tag = object_param->add_tag();
+                        *tag = (*iterator).toLocal8Bit().data();
+                    }
+//                    out << classList[0] << ",";
+//                    out << QString::number(x) << ",";
+//                    out << QString::number(y) << ",";
+//                    out << QString::number(x + w) << ",";
+//                    out << QString::number(y + h);
+//                    for(int index = 1; index < classList.count(); ++index){
+//                        out << "," << classList[index];
+//                    }
+//                    out << "\n";
+
+                    /* save to xml */
+                    QDomElement object = doc.createElement("object");
+                    doc.appendChild(object);
+                    annotation.appendChild(object);
+
+                    QDomElement name = doc.createElement("name");
+                    QDomText className = doc.createTextNode(classList[0]);
+                    object.appendChild(name);
+                    name.appendChild(className);
+
+                    QDomElement bndbox = doc.createElement("bndbox");
+                    doc.appendChild(bndbox);
+                    object.appendChild(bndbox);
+
+                    QDomElement xmin = doc.createElement("xmin");
+                    QDomText xmin_text = doc.createTextNode(
+                               QString::number(x));
+                    bndbox.appendChild(xmin);
+                    xmin.appendChild(xmin_text);
+
+                    QDomElement ymin = doc.createElement("ymin");
+                    QDomText ymin_text = doc.createTextNode(
+                                QString::number(y));
+                    bndbox.appendChild(ymin);
+                    ymin.appendChild(ymin_text);
+
+                    QDomElement xmax = doc.createElement("xmax");
+                    QDomText xmax_text = doc.createTextNode(
+                                QString::number(x + w));
+                    bndbox.appendChild(xmax);
+                    xmax.appendChild(xmax_text);
+
+                    QDomElement ymax = doc.createElement("ymax");
+                    QDomText ymax_text = doc.createTextNode(
+                               QString::number(y + h));
+                    bndbox.appendChild(ymax);
+                    ymax.appendChild(ymax_text);
+                }
+            }
+        }
+        std::string tmp;
+        google::protobuf::TextFormat::PrintToString(pictureData, &tmp); //message to prototxt --ascii
+        out << QString(tmp.c_str());
+
+        txtFile.close();
+
+        QTextStream xml_out(&xmlFile);
+        doc.save(xml_out,4);
+        xmlFile.close();
+    }
+    if(videoCapture.isOpened()){
+        cv::imwrite((saveDir_img.path() + "/" +
+                     saveFileName + "_" + QString::number(now_Index) + ".png").toLocal8Bit().data(),
+                     ui->widget->getOriginImage());
+    }
+    else
+    {
+        cv::imwrite((saveDir_img.path() + "/" +
+                     saveFileName + ".png").toLocal8Bit().data(),
+                     ui->widget->getOriginImage());
+    }
+
+    ui->widget->deleteAllItems();
+
+    if(videoCapture.isOpened())
+    {
+        videoNexFrame();
+    }
+    else if(!filePathList.empty())
+    {
+        nextImage();
+    }
+    else
+    {
+        fileName="";
+        openFile();
+    }
+}
+
+void MainWindow::addItem()
+{
+    if(ui->ItemName->text() == "")
+        return;
+    QColor color = QColorDialog::getColor();
+
+    if(classMap.find(ui->ItemName->text()) != classMap.end()) // modify text color
+    {
+        classMap[ui->ItemName->text()] = color;
+        comboBoxChanged(ui->ItemName->text());
+        return;
+    }
+
+    classMap[ui->ItemName->text()] = color;
+
+    ui->comboBox->addItem(ui->ItemName->text());
+    ui->comboBox->setCurrentIndex(
+                ui->comboBox->count() - 1);
+    ui->ItemName->setText("");
+    updateComboBoxColor();
+}
+
+void MainWindow::deleteItem()
+{
+    if(ui->comboBox->count() == 0)
+        return;
+    QString name = ui->comboBox->currentText();
+    ui->comboBox->removeItem(ui->comboBox->currentIndex());
+    classMap.erase(classMap.find(name));
+}
+
+void MainWindow::comboBoxChanged(QString name)
+{
+    QColor color = classMap[name];
+
+    QList<QString> classList;
+    classList.push_back(name);
+
+    ui->widget->setRectInfo(color, classList);
+    foreach (QGraphicsItem *item, ui->widget->selectItems()) {
+        if(item->type() == SocketGraphicsItem::Type) {
+            SocketGraphicsItem *socketItem = static_cast<SocketGraphicsItem*>(item);
+            ui->widget->changeRectItemColor(socketItem, color);
+            socketItem->setList(classList);
+        }
+    }
+
+    updateComboBoxColor();
+}
+
+void MainWindow::updateComboBoxColor()
+{
+    for(int index = 0; index < ui->comboBox->count(); ++index)
+    {
+        ui->comboBox->setItemData(index, classMap[ui->comboBox->itemText(index)], Qt::TextColorRole);
+    }
+}
+
+void MainWindow::loadSetting()
+{
+    QFileInfo file(SettingFilePath);
+    if(!file.exists())
+        return;
+    QSettings settings(SettingFilePath, QSettings::IniFormat);
+
+    /* Load Item */
+    int counter = settings.beginReadArray("Items");
+    for(int index = 0; index < counter; ++index)
+    {
+        settings.setArrayIndex(index);
+        QString name = settings.value("Name").toString();
+        QColor color(settings.value("Red").toInt(),
+                     settings.value("Green").toInt(),
+                     settings.value("Blue").toInt());
+
+        classMap[name] = color;
+        ui->comboBox->addItem(name);
+    }
+    comboBoxChanged(ui->comboBox->currentText());
+    settings.endArray();
+    /* End */
+
+    /* MultiClasses */
+    QList<QString> classesList;
+    counter = settings.beginReadArray("MultiClasses");
+    for(int index = 0; index < counter; ++index)
+    {
+        settings.setArrayIndex(index);
+        QString a = settings.value("Class").toString();
+        classesList.push_back(a);
+    }
+    ui->widget->setMultiClassesList(classesList);
+    settings.endArray();
+    /* End */
+
+    /* General */
+    filePath = settings.value("Def File Path").toString();
+    ui->FrameStep->setValue(settings.value("Video Frame Step").toInt());
+    video_Step = ui->FrameStep->value();
+    /* End */
+}
+
+void MainWindow::saveSetting()
+{
+    QSettings settings(SettingFilePath, QSettings::IniFormat);
+
+    /* Save Item */
+    int counter = ui->comboBox->count();
+    settings.beginWriteArray("Items");
+
+    for(int index = 0; index < counter; ++index)
+    {
+
+        QString name = ui->comboBox->itemText(index);//ui->comboBox->currentText();
+
+        QColor color = classMap[name];
+        settings.setArrayIndex(index);
+        settings.setValue("Name", name);
+        settings.setValue("Red", color.red());
+        settings.setValue("Green", color.green());
+        settings.setValue("Blue", color.blue());
+    }
+
+    settings.endArray();
+    /* End */
+
+    /* MultiClasses List */
+    QList<QString> classList(ui->widget->getMultiClassesList());
+    counter = classList.count();
+    settings.beginWriteArray("MultiClasses");
+
+    for(int index = 0; index < counter; ++index)
+    {
+        settings.setArrayIndex(index);
+        settings.setValue("Class", classList[index]);
+    }
+    settings.endArray();
+    /* End */
+
+    /* General */
+    settings.setValue("Def File Path", filePath);
+    settings.setValue("Video Frame Step", ui->FrameStep->value());
+    /* End */
+}
+
+void MainWindow::videoSliderChanged(int index)
+{
+    // !!!lock the process, do not remove it!!!
+    if(threadContorler)
+    {
+        return;
+    }
+
+    threadContorler = true;
+    now_Index = static_cast<int>(total_Image * (static_cast<float>(index) / 100) + 0.5);
+
+    cv::Mat img;
+    if(videoCapture.isOpened()){
+        img = getVideoImage(++now_Index);
+    }
+    else if(!filePathList.empty())
+    {
+        img = cv::imread(filePathList[now_Index].absoluteFilePath().toLocal8Bit().data());
+        fileName = filePathList[now_Index].baseName();
+    }
+    else
+    {
+        ui->VideoSlider->setValue(0);
+        threadContorler = false;
+        return;
+    }
+
+    updateUI();
+
+    setImage(img);
+
+    threadContorler = false;
+}
+
+void MainWindow::setOpctions()
+{
+    opctionsWindow.show();
+    updateShortcut();
+}
+
+void MainWindow::videoStepChange(int video_Step)
+{
+    this->video_Step = video_Step;
+}
+
+void MainWindow::setImage(cv::Mat &img)
+{
+    float scaleX = (img.cols < img.rows) ? (static_cast<float>(img.cols) / img.rows) : 1;
+    float scaleY = (img.cols > img.rows) ? (static_cast<float>(img.rows) / img.cols) : 1;
+
+    ui->widget->setGeometry(QRect(10, 10,
+                                  scaleX * MAX_IMAGE_SIZE,
+                                  scaleY * MAX_IMAGE_SIZE));
+
+    ui->widget->setImage(img);
+
+#ifdef USE_CAFFE_
+    predictionBoxAndDraw(img);
+#endif
+    cv::waitKey(DELAY_TIME); // make it delay
+}
+
+void MainWindow::setImage(cv::Mat &img, QString txtPath)
+{
+    ui->widget->deleteAllItems();
+    QFile txt(txtPath);
+    if(txt.open(QIODevice::ReadOnly))
+    {
+        QTextStream in(&txt);
+        QString tmp = in.readAll();
+        std::string file = tmp.toLocal8Bit().data();
+        RectData::PictureData pictureData;
+        bool success = google::protobuf::TextFormat::ParseFromString(file, &pictureData);
+        if(success)
+        {
+            float scaleX = (img.cols < img.rows) ? (static_cast<float>(img.cols) / img.rows) : 1;
+            float scaleY = (img.cols > img.rows) ? (static_cast<float>(img.rows) / img.cols) : 1;
+
+            ui->widget->setGeometry(QRect(10, 10,
+                                          scaleX * MAX_IMAGE_SIZE,
+                                          scaleY * MAX_IMAGE_SIZE));
+
+            ui->widget->setImage(img);
+
+            for(google::protobuf::RepeatedPtrField<::RectData::ObjectParam>::const_iterator iterator = pictureData.object_parameter().begin();
+                iterator != pictureData.object_parameter().end(); ++iterator)
+            {
+                QList<QString> classList;
+                for(google::protobuf::RepeatedPtrField<std::string>::const_iterator tagIterator = iterator->tag().begin();
+                    tagIterator != iterator->tag().end(); ++tagIterator){
+                    classList.push_back(QString(tagIterator->c_str()));
+                }
+                if(iterator->tag_size() == 1){
+                    std::map<QString, QColor>::iterator color = classMap.find(classList[0]);
+                    if(color != classMap.end())
+                        ui->widget->addRectItem(iterator->xmin() / static_cast<float>(pictureData.width()),
+                                                iterator->ymin() / static_cast<float>(pictureData.height()),
+                                                iterator->xmax() / static_cast<float>(pictureData.width()),
+                                                iterator->ymax() / static_cast<float>(pictureData.height()), color->second, classList);
+                    else{
+                        int R = qrand() % 255;
+                        int G = qrand() % 255;
+                        int B = qrand() % 255;
+                        classMap[classList[0]] = QColor(R, G, B);
+                        ui->widget->addRectItem(iterator->xmin() / static_cast<float>(pictureData.width()),
+                                                iterator->ymin() / static_cast<float>(pictureData.height()),
+                                                iterator->xmax() / static_cast<float>(pictureData.width()),
+                                                iterator->ymax() / static_cast<float>(pictureData.height()),
+                                                classMap[classList[0]], classList);
+
+                        ui->comboBox->addItem(classList[0]);
+                        updateComboBoxColor();
+                    }
+                }
+                else
+                {
+                    ui->widget->addRectItem(iterator->xmin() / static_cast<float>(pictureData.width()),
+                                            iterator->ymin() / static_cast<float>(pictureData.height()),
+                                            iterator->xmax() / static_cast<float>(pictureData.width()),
+                                            iterator->ymax() / static_cast<float>(pictureData.height()),
+                                            QColor(0,0,0), classList);
+                }
+            }
+        }
+
+        cv::waitKey(DELAY_TIME); // make it slow down
+    }
+    else
+    {
+        setImage(img);
+    }
+
+}
+
+void MainWindow::widghtItemNumberChange(int num)
+{
+    this->statusBar()->showMessage("Item Quantity: " +
+                               QString::number(num));
+}
+
+MainWindow::~MainWindow()
+{
+    saveSetting();
+    delete ui;
+#ifdef USE_CAFFE_
+    delete net;
+#endif
+    delete CreateMode;
+    delete SelectMode;
+    delete ResizeMode;
+}
