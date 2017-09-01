@@ -1,0 +1,2 @@
+CC=g++
+all: $(CC) -Wall -std=c++11 -lopencv_core -lopencv_imgproc -lopencv_highgui  -lopencv_gpu -lprotobuf -L$CAFFE_HOME/build/lib -lcaffe -I./ netforward.h netforward.cpp proto2/data.pb.h proto2/data.pb.cc yolo_v2_output.h yolo_v2_output.cpp iou.cpp -I$CAFFE_HOME/include -I$CAFFE_HOME/build/include $CAFFE_HOME/src -lprotobuf -lglog -lboost_system -lgflags -lboost_filesystem -I/usr/local/cuda/include -L/usr/local/cuda/lib64 -lcudart -lcublas -lcurand -DUSE_CAFFE_

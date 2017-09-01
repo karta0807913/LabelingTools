@@ -73,7 +73,7 @@ void GraphicScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void GraphicScene::deleteAllItems()
 {
     foreach (QGraphicsItem *item, items()) {
-        if(item->type() == SocketGraphicsItem::Type){
+        if(SocketGraphicsItem::Type == item->type()){
             delete item;
         }
     }
@@ -108,6 +108,7 @@ void GraphicScene::addItem(SocketGraphicsItem *item, QList<QString> &classList)
     ++graphicItemNum;
     connect(item, SIGNAL(mouseDoubleClickSignal(SocketGraphicsItem*)),
             this, SLOT(mouseDoubleClickSignal(SocketGraphicsItem*)));
+
     item->setList(classList);
     QGraphicsScene::addItem(item);
 }

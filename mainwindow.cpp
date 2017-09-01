@@ -1,24 +1,28 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-//#define YOLO_V2
+#define YOLO_V2
 #ifndef YOLO_V2
 #include "yolo_output.h"
 #else
 #include "yolo_v2_output.h"
 #endif
 
+//typedef yolo_v2::BASE_YOLO_2_FUNCTOR YOLO_BOX_FUNCTION;
+typedef yolo_v2::SOFT_NMS YOLO_FUNCTOR;
+
 #include <QRect>
 #include <QTime>
 #include "socketgraphicsitem.h"
 #include <QDomDocument>
+#include <QDebug>
 
-const int predictBoxNum = 2;
-const int splitScreenNum = 7;
+const int predictBoxNum = 5;
+const int splitScreenNum = 13;
 
-const int classNumber = 5;
-const float twoBoxArea = 0;
-const float confidenceLimit = 0.8f;
+const int classNumber = 20;
+const float twoBoxArea = 0.5;
+const float confidenceLimit = 0.3f;
 
 #ifndef YOLO_V2
 const char protoFilePath[]  =
@@ -29,98 +33,37 @@ const char meanFilePath[]   =
         "/media/e419/4A9D773A59A2CB48/adasDB/ForTrain/lmdb/train_mean.binaryproto";
 #else
 const char protoFilePath[]  =
-        "/home/e419/Desktop/prototxt/darknet.prototxt";
+        "/home/e419/caffe/examples/yolo/darknet_deploy_1.prototxt";
 const char caffeModelPath[] =
-        "/home/e419/caffe/examples/yolo/models/darknet_iter_30000.caffemodel";
+        "/home/e419/caffe/examples/yolo/models/voc_data_1_iter_40000.caffemodel";
 const char meanFilePath[]   =
-        "/home/e419/caffe-yolo/data/yolo/lmdb/416x416_senpai_dataBase.binaryproto";
+        "/home/e419/voc_train.binaryproto";
 //        "/home/e419/caffe-yolo/data/yolo/lmdb/senpai_mean.binaryproto";
 #endif
 #ifdef YOLO_V2
-//std::vector<float> bias = {0.39903296005,
-//                           0.38387913675,
-//                           1.07685741505,
-//                           0.82857831260,
-//                           0.14642432766,
-//                           0.17379632345,
-//                           2.19841344367,
-//                           2.11080163250,
-//                           0.43343092734,
-//                           1.00408027394 };
-std::vector<float> bias = {0.14249932,
-                           0.16662139,
-                           0.37634214,
-                           0.82304634,
-                           0.22170075,
-                           0.39797696,
-                           0.590625,
-                           0.39301576,
-                           0.04730832,
-                           0.07110102 };
 
-//std::vector<float> bias = {1.08,
-//                           1.09,
-//                           3.42,
-//                           4.41,
-//                           6.63,
-//                           11.38,
-//                           9.42,
-//                           5.11,
-//                           16.62,
-//                           10.52
-//                           };
+std::vector<float> bias = {
+                                 0.08307,
+                                 0.09153,
+                                 0.26307,
+                                 0.33923,
+                                 0.51,
+                                 0.87538461538,
+                                 0.72461538461,
+                                 0.39307692307,
+                                 1,
+                                 0.80923076923,
+                          };
 #endif
 
-//this must be const
-//const QString classes[] = {"Car", "Motorcycle", "Pedestrian", "Semaphore", "Bicycle"};
-//const QString
-//     classes[] = {"uncovered", "cap", "mask", "sunglasses", "hand_cover",
-//                  "gloves_cover",
-//                  "helmet_sunglasses",
-//                  "helmet_sunglasses_hand_cover",
-//                  "helmet_sunglasses_mask",
-//                  "helmet_mask",
-//                  "helmet_hand_cover",
-//                  "helmet_gloves_cover",
-//                  "cap_sunglasses",
-//                  "cap_sunglasses_mask",
-//                  "cap_sunglasses_hand_cover",
-//                  "cap_sunglasses_mask_hand_cover",
-//                  "cap_mask",
-//                  "cap_hand_cover",
-//                  "cap_gloves_cover",
-//                  "sunglasses_mask",
-//                  "sunglasses_mask_gloves_cover",
-//                  "sunglasses_mask_hand_cover",
-//                  "sunglasses_hand_cover",
-//                  "sunglasses_gloves_cover",
-//                  "mask_hand_cover",
-//                  "helmet"};
-
-//const QString classes[] = {"uncovered",
-//                           "cap",
-//                           "mask",
-//                           "helmet",
-//                           "sunglasses",
-//                           "cap_sunglasses",
-//                           "cap_mask"};
-
-const QString classes[] = {"uncovered",
-                           "cap",
-                           "mask",
-                           "helmet",
-                           "sunglasses",
-                           "cap_sunglasses",
-                           "cap_mask",
-                           "cap_sunglasses_mask"};
-
-
+const QString classes[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 
 #ifdef YOLO_V2
 using namespace yolo_v2;
 #else
 using namespace yolo;
 #endif
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -510,16 +453,17 @@ void  MainWindow::prvImage()
 
 void MainWindow::videoNexFrame()
 {
-    if(!videoCapture.isOpened() || now_Index + video_Step > total_Image){
-        if(filePathList.empty())
-            openFile();
-        return;
-    }
 
     // !!!lock the process, do not remove it!!!
     if(threadContorler)
         return;
     threadContorler = true;
+
+    if(!videoCapture.isOpened() || now_Index + video_Step > total_Image){
+        if(filePathList.empty())
+            openFile();
+        return;
+    }
 
     cv::Mat img = getVideoImage(now_Index += video_Step);
 
@@ -589,8 +533,9 @@ void MainWindow::predictionBoxAndDraw(cv::Mat &img)
         QList<QString> classList;
         classList.push_back(classes[iterator->classIndex]);
 
-        if(color != classMap.end())
+        if(color != classMap.end()){
             ui->widget->addRectItem(x, y, w, h, color->second, classList);
+        }
         else{
             int R = qrand() % 255;
             int G = qrand() % 255;
@@ -605,8 +550,10 @@ void MainWindow::predictionBoxAndDraw(cv::Mat &img)
     }
 #else
 
-    std::vector<DATA> finalRes = getResult<predictBoxNum, splitScreenNum>(res, bias, classNumber,
+    std::vector<DATA> finalRes = getResult<predictBoxNum, splitScreenNum, YOLO_FUNCTOR>(res, bias, classNumber,
                                                           confidenceLimit, twoBoxArea);
+//std::vector<DATA> finalRes = getResult<predictBoxNum, splitScreenNum, YOLO_BOX_FUNCTION>(res, bias, classNumber,
+//                                                      confidenceLimit, twoBoxArea);
     for(auto iterator = finalRes.begin(); iterator != finalRes.end(); ++iterator)
     {
         float w = iterator->w;
@@ -624,6 +571,7 @@ void MainWindow::predictionBoxAndDraw(cv::Mat &img)
 
         QList<QString> classList;
         classList.push_back(classes[iterator->classIndex]);
+        qDebug() << classes[iterator->classIndex] << iterator->confidence;
 
         if(color != classMap.end())
             ui->widget->addRectItem(x, y, w, h, color->second, classList);
@@ -1121,7 +1069,6 @@ void MainWindow::setImage(cv::Mat &img, QString txtPath)
                                                 iterator->xmax() / static_cast<float>(pictureData.width()),
                                                 iterator->ymax() / static_cast<float>(pictureData.height()),
                                                 classMap[classList[0]], classList);
-
                         ui->comboBox->addItem(classList[0]);
                         updateComboBoxColor();
                     }

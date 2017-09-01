@@ -53,8 +53,8 @@ void GraphicWidget::addRectItem(float x1, float y1, float x2, float y2, QColor c
                 (x2 - x1) * scene->sceneRect().width(),
                 (y2 - y1) * scene->sceneRect().height());
 
-    connect(rectItem, SIGNAL(mouseDoubleClickSignal(SocketGraphicsItem*)),
-            this, SLOT(mouseDoubleClickSignal(SocketGraphicsItem*)));
+//    connect(rectItem, SIGNAL(mouseDoubleClickSignal(SocketGraphicsItem*)),
+//            this, SLOT(mouseDoubleClickSignal(SocketGraphicsItem*)));
 
     scene->addItem(rectItem, classList);
     emit itemNumberChanged(scene->getGraphicItemsNum());

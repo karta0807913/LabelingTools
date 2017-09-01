@@ -18,6 +18,7 @@
 #include <list>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 
 #ifdef __linux
 #include "proto2/data.pb.h"
@@ -123,6 +124,8 @@ private:
 
     QList<QFileInfo> filePathList;
     QString txtDir;
+
+//    std::mutex threadLocker;
 
     const QString SettingFilePath = "./setting.ini";
     const QString MultiClassName = "MultiClass";

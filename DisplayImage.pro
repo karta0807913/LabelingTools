@@ -42,13 +42,12 @@ FORMS    += mainwindow.ui \
     opctionswindow.ui \
     classesdialog.ui
 
+CAFFE_HOME = $$(CAFFE_HOME)
 HEADERS += \
     netforward.h
 
 RESOURCES += \
     buttonpicture.qrc
-
-CAFFE_HOME = $$(CAFFE_HOME)
 
 # caffe
 INCLUDEPATH +=$${CAFFE_HOME}/build/include \
@@ -66,4 +65,5 @@ LIBS += -lopencv_core -lopencv_imgproc -lopencv_highgui  -lopencv_gpu
 
 LIBS += -lprotobuf -lglog -lboost_system -lgflags -lboost_filesystem
 
-QMAKE_CXXFLAGS += -D USE_CAFFE_
+QMAKE_CXXFLAGS += --std=c++11 \
+                  -D USE_CAFFE_

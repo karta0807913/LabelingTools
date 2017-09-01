@@ -3,6 +3,7 @@
 
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsRectItem>
+#include <QGraphicsTextItem>
 #include <QString>
 #include <QList>
 #include <QObject>
@@ -15,12 +16,16 @@ public:
     explicit SocketGraphicsItem(QObject *parent = 0);
     void setList(QList<QString> &classList);
     QList<QString> getClasses();
-
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
-    ~SocketGraphicsItem();
+    void setRect(const QRectF &rect);
+    void setRect(qreal x, qreal y, qreal w, qreal h);
+//    void setPos(qreal x, qreal y);
+//    void setPos(const QPointF &pos);
+     ~SocketGraphicsItem();
 
 private:
     QList<QString> classList;
+    QGraphicsTextItem textItem;
 
 signals:
     void mouseDoubleClickSignal(SocketGraphicsItem *item);

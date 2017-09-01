@@ -23,26 +23,7 @@ SOURCES += main.cpp\
     classesdialog.cpp \
     socketgraphicsitem.cpp \
     graphicscene.cpp \
-    include/proto/data.pb.cc \
-    include/google/protobuf/stubs/common.cc\
-    include/google/protobuf/stubs/once.cc\
-    include/google/protobuf/stubs/atomicops_internals_x86_msvc.cc\
-    include/google/protobuf/io/coded_stream.cc\
-    include/google/protobuf/message_lite.cc\
-    include/google/protobuf/descriptor.cc\
-    include/google/protobuf/generated_message_reflection.cc\
-    include/google/protobuf/reflection_ops.cc\
-    include/google/protobuf/wire_format.cc\
-    include/google/protobuf/repeated_field.cc\
-    include/google/protobuf/generated_message_util.cc\
-    include/google/protobuf/message.cc\
-    include/google/protobuf/unknown_field_set.cc\
-    include/google/protobuf/wire_format_lite.cc\
-    include/google/protobuf/descriptor.pb.cc\
-    include/google/protobuf/arena.cc\
-    include/google/protobuf/arenastring.cc\
-    include/google/protobuf/extension_set.cc\
-    include/google/protobuf/io/strtod.cc
+    include/proto/data.pb.cc 
 
 HEADERS  += mainwindow.h \
     graphicscene.h \
@@ -56,44 +37,7 @@ HEADERS  += mainwindow.h \
     classesdialog.h \
     socketgraphicsitem.h \
     graphicscene.h \
-    include/proto/data.pb.h \
-    include/google/protobuf/stubs/common.h\
-    include/google/protobuf/stubs/port.h\
-    include/google/protobuf/stubs/macros.h\
-    include/google/protobuf/stubs/platform_macros.h\
-    include/google/protobuf/stubs/logging.h\
-    include/google/protobuf/stubs/scoped_ptr.h\
-    include/google/protobuf/stubs/mutex.h\
-    include/google/protobuf/stubs/callback.h\
-    include/google/protobuf/stubs/type_traits.h\
-    include/google/protobuf/stubs/template_util.h\
-    include/google/protobuf/stubs/once.h\
-    include/google/protobuf/stubs/atomicops.h\
-    include/google/protobuf/stubs/atomicops_internals_x86_msvc.h\
-    include/google/protobuf/stubs/shared_ptr.h\
-    include/google/protobuf/stubs/casts.h\
-    include/google/protobuf/stubs/atomic_sequence_num.h\
-    include/google/protobuf/stubs/fastmem.h\
-    include/google/protobuf/io/coded_stream.h\
-    include/google/protobuf/wire_format_lite_inl.h\
-    include/google/protobuf/message_lite.h\
-    include/google/protobuf/descriptor.h\
-    include/google/protobuf/generated_message_reflection.h\
-    include/google/protobuf/reflection_ops.h\
-    include/google/protobuf/wire_format.h\
-    include/google/protobuf/repeated_field.h\
-    include/google/protobuf/generated_enum_reflection.h\
-    include/google/protobuf/generated_message_util.h\
-    include/google/protobuf/message.h\
-    include/google/protobuf/metadata.h\
-    include/google/protobuf/unknown_field_set.h\
-    include/google/protobuf/wire_format_lite.h\
-    include/google/protobuf/descriptor.pb.h\
-    include/google/protobuf/arena.h\
-    include/google/protobuf/has_bits.h\
-    include/google/protobuf/arenastring.h\
-    include/google/protobuf/extension_set.h\
-    include/google/protobuf/io/strtod.h
+    include/proto/data.pb.h 
 
 
 FORMS += mainwindow.ui \

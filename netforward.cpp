@@ -6,12 +6,12 @@ using namespace std;
 
 NetForward::NetForward(std::string proto, std::string model)
 {
-    NetForward(proto, model, "", TEST);
+    NetForward(proto, model, "", caffe::TEST);
 }
 
 NetForward::NetForward(std::string proto, std::string model, std::string mean)
 {
-    NetForward(proto, model, mean, TEST);
+    NetForward(proto, model, mean, caffe::TEST);
 }
 
 NetForward::NetForward(std::string proto, std::string model, caffe::Phase phase)
@@ -23,7 +23,7 @@ NetForward::NetForward(std::string proto, std::string model, std::string mean,
                        caffe::Phase phase)
 {
     Caffe::set_mode(Caffe::GPU);
-    Caffe::SetDevice(1);
+    Caffe::SetDevice(0);
     net = new caffe::Net<float>(proto, phase);
     param = new NetParameter();
     /* init net */
@@ -55,8 +55,6 @@ vector<float> NetForward::forward(cv::Mat &image)
     Blob<float>* output_layer = net->output_blobs()[0];
     const float* begin = output_layer->cpu_data();
     const float* end = begin + output_layer->channels();
-
-    //delete input_channels;
 
     return vector<float>(begin, end);
 }

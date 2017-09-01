@@ -2,6 +2,7 @@
 #include "yolo_v2_output.h"
 #include <iostream>
 namespace yolo_v2{
+
     float sigmoid(double x)
     {
         return 1 / (1 + exp(-x));
@@ -22,10 +23,10 @@ namespace yolo_v2{
     float getTwoBoxArea(DATA data1, DATA data2)
     {
         float width = Overlap(data1.x, data1.w,
-                          data2.x, data1.w);
+                          data2.x, data2.w);
 
         float height = Overlap(data1.y, data1.h,
-                          data2.y, data1.h);
+                          data2.y, data2.h);
 
         if (width <= 0 || height <= 0)
             return 0;
@@ -34,7 +35,7 @@ namespace yolo_v2{
             float area = width * height;
             float area1 = data1.w * data1.h;
             float area2 = data2.w * data2.h;
-            return area / std::min(area1, area2);
+            return area / ((area1 + area2) - area);
         }
     }
 }

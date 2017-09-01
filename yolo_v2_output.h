@@ -5,9 +5,9 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <deque>
 
 namespace yolo_v2{
-
     class DATA{
     public:
         float confidence;
@@ -28,9 +28,58 @@ namespace yolo_v2{
     float sigmoid(double x);
     float getTwoBoxArea(DATA data1, DATA data2); //IOU function
 
-    template<int OBJECT_NUM_, int SIDE_>
+    class BASE_YOLO_2_FUNCTOR {
+    public:
+        static void run(std::vector<DATA> &ans, std::deque<DATA> &boxDataList, float twoBoxArea, float confidenceLimit){
+            std::vector<bool> flags(boxDataList.size());
+            for(unsigned int compare = 0; compare < boxDataList.size(); ++compare){
+                if(flags[compare])
+                    continue;
+                for(unsigned int target = 0; target < boxDataList.size(); ++target){
+                    float box_iou = getTwoBoxArea(boxDataList[compare], boxDataList[target]);
+                    if(flags[target] ||
+                            box_iou > twoBoxArea ||
+                            (box_iou != 0 && boxDataList[compare].classIndex == boxDataList[target].classIndex)){
+                        flags[target] = true;
+                        continue;
+                    }
+                }
+                ans.push_back(boxDataList[compare]);
+            }
+        }
+        BASE_YOLO_2_FUNCTOR() = delete;
+
+    };
+
+    class SOFT_NMS {
+    public:
+        static void run(std::vector<DATA> &ans, std::deque<DATA> &boxDataList, float twoBoxArea, float confidenceLimit){
+            std::vector<bool> flags(boxDataList.size());
+            for(unsigned int compare = 0; compare < boxDataList.size(); ++compare){
+                if(flags[compare])
+                    continue;
+                for(unsigned int target = 0; target < boxDataList.size(); ++target){
+                    auto rescore= [](float confidence, float iou, float twoBoxArea){
+                        return confidence*(float)exp((iou*iou/twoBoxArea)*-1);
+                    };
+
+                    float box_iou = getTwoBoxArea(boxDataList[compare], boxDataList[target]);
+                    if(flags[target] ||
+                        (box_iou != 0 && rescore(boxDataList[target].confidence, box_iou, twoBoxArea) < confidenceLimit))
+                    {
+                        flags[target] = true;
+                    }
+                }
+                ans.push_back(boxDataList[compare]);
+            }
+        }
+        SOFT_NMS() = delete;
+    };
+
+    template<int OBJECT_NUM_, int SIDE_, typename FUN = BASE_YOLO_2_FUNCTOR>
     std::vector<DATA> getResult(std::vector<float> &res, std::vector<float> &bias, int classNumber,
                               float confidenceLimit, float twoBoxArea){
+
         if((int)res.size() != (OBJECT_NUM_) * (classNumber + 5) * SIDE_ * SIDE_){
             std::cout << "vector Number (" << res.size() << ") != request Number (" << OBJECT_NUM_ * (classNumber + 5) * SIDE_ * SIDE_ << ")" << std::endl;
             exit(1);
@@ -39,8 +88,9 @@ namespace yolo_v2{
             std::cout << "OBJECT NUMBER (" << OBJECT_NUM_ << ") > bias number / 2 (" << bias.size() / 2 << ")" << std::endl;
             exit(1);
         }
-        DATA *data = new DATA[OBJECT_NUM_];
+        DATA data;
         std::vector<DATA> ans;
+        std::deque<DATA> boxDataList;
         const int screen_size = SIDE_ * SIDE_;
         const int box_size = (5 + classNumber) * screen_size;
 
@@ -48,50 +98,25 @@ namespace yolo_v2{
             for(int side_x = 0; side_x < SIDE_; ++side_x){
                 for(int obj_index = 0; obj_index < OBJECT_NUM_; ++obj_index){
                     int box_index = side_y * SIDE_ + side_x + obj_index * box_size;
-                    data[obj_index].x = (sigmoid(res[box_index + 0 * screen_size]) + side_x) / SIDE_;
-                    data[obj_index].y = (sigmoid(res[box_index + 1 * screen_size]) + side_y) / SIDE_;
-                    data[obj_index].w = bias[2 * obj_index + 0] * exp(res[box_index + 2 * screen_size]);
-                    data[obj_index].h = bias[2 * obj_index + 1] * exp(res[box_index + 3 * screen_size]);
-                    data[obj_index].confidence = res[box_index + 4 * screen_size];
-
-                    int pred_class = 0;
-                    int best_score = 0;
-                    for(int class_index = 0; class_index < classNumber; ++class_index){
-                        if(res[box_index + (5 + class_index) * screen_size] > best_score){
-                            best_score = res[box_index + (5 + class_index) * screen_size];
-                            pred_class = class_index;
+                    data.x = ((res[box_index + 0 * screen_size]) + side_x) / SIDE_;
+                    data.y = ((res[box_index + 1 * screen_size]) + side_y) / SIDE_;
+                    data.w = bias[2 * obj_index + 0] * exp(res[box_index + 2 * screen_size]);
+                    data.h = bias[2 * obj_index + 1] * exp(res[box_index + 3 * screen_size]);
+                    data.confidence = res[box_index + 4 * screen_size];
+                    float biggestNum = 0;
+                    for(int classIndex = 0; classIndex < classNumber; ++classIndex){
+                        if(biggestNum < res[box_index + (5 + classIndex) * screen_size]){
+                            data.classIndex = classIndex;
+                            biggestNum = res[box_index + (5 + classIndex) * screen_size];
                         }
                     }
-                    data[obj_index].classIndex = pred_class;
-                }
-                std::sort(data, data + OBJECT_NUM_);
-                bool flag[OBJECT_NUM_] = { false };
-                for(int col = 0; col < OBJECT_NUM_; ++col)
-                {
-                    if(data[col].confidence < confidenceLimit)
-                        break;
-                    if(flag[col])
-                        continue;
-                    for(int raw = col + 1; raw < OBJECT_NUM_; ++raw)
-                    {
-                        if(flag[raw])
-                            continue;
-                        if(data[raw].confidence < confidenceLimit)
-                        {
-                            break;
-                        }
-                        float iou = getTwoBoxArea(data[col], data[raw]);
-                        if(iou > twoBoxArea)
-                        {
-                            flag[raw] = true;
-                            continue;
-                        }
-                    }
-                    ans.push_back(data[col]);
+                    if(data.confidence > confidenceLimit)
+                        boxDataList.push_back(data);
                 }
             }
         }
-        delete data;
+        std::sort(boxDataList.begin(), boxDataList.end());
+        FUN::run(ans, boxDataList, twoBoxArea, confidenceLimit);
         return ans;
     }
 }
