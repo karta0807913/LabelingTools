@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/Up.png</file>
+        <file>icons/Shears.png</file>
+        <file>icons/Screenshot.png</file>
+        <file>icons/Scaling.png</file>
+        <file>icons/resize.png</file>
+        <file>icons/Recover.png</file>
+        <file>icons/Palette.png</file>
+        <file>icons/openMovic.png</file>
+        <file>icons/openImage.png</file>
+        <file>icons/openFolder.png</file>
+        <file>icons/New.PNG</file>
+        <file>icons/modify.PNG</file>
+        <file>icons/icon.png</file>
+        <file>icons/frame.png</file>
+        <file>icons/Down.png</file>
+        <file>icons/DBModify.png</file>
+        <file>icons/arrow.png</file>
+    </qresource>
+</RCC>

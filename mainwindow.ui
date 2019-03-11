@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1042</width>
+    <height>1029</height>
+   </rect>
+  </property>
+  <property name="mouseTracking">
+   <bool>true</bool>
+  </property>
+  <property name="windowTitle">
+   <string>DisplayImage</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="buttonpicture.qrc">
+    <normaloff>:/icons/icons/icon.png</normaloff>:/icons/icons/icon.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <widget class="GraphicWidget" name="widget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>9</x>
+      <y>9</y>
+      <width>841</width>
+      <height>371</height>
+     </rect>
+    </property>
+    <property name="cursor">
+     <cursorShape>ArrowCursor</cursorShape>
+    </property>
+    <property name="mouseTracking">
+     <bool>true</bool>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1042</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionOpenFile"/>
+   <addaction name="actionOpenFloder"/>
+   <addaction name="actionModify"/>
+   <addaction name="separator"/>
+   <addaction name="separator"/>
+   <addaction name="actionFrame"/>
+   <addaction name="actionArror"/>
+   <addaction name="actionScaling"/>
+   <addaction name="separator"/>
+   <addaction name="separator"/>
+   <addaction name="actionUp"/>
+   <addaction name="actionDown"/>
+   <addaction name="separator"/>
+   <addaction name="actionOpctions"/>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget">
+   <property name="features">
+    <set>QDockWidget::DockWidgetMovable</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QComboBox" name="comboBox"/>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>video_step</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="FrameStep">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>20</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="ItemName"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addItem">
+       <property name="text">
+        <string>AddItem</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="deleteItem">
+       <property name="text">
+        <string>DeleteItem</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Export">
+       <property name="text">
+        <string>Export</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_4">
+   <property name="features">
+    <set>QDockWidget::NoDockWidgetFeatures</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_4">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QLabel" name="fileNameLabel">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="ImageNum">
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+         <kerning>true</kerning>
+        </font>
+       </property>
+       <property name="inputMask">
+        <string>9999/2\9</string>
+       </property>
+       <property name="text">
+        <string>0000/29</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="VideoSlider">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="actionArror">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/arrow.png</normaloff>:/icons/icons/arrow.png</iconset>
+   </property>
+   <property name="text">
+    <string>Arror</string>
+   </property>
+  </action>
+  <action name="actionFrame">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/frame.png</normaloff>:/icons/icons/frame.png</iconset>
+   </property>
+   <property name="text">
+    <string>Frame</string>
+   </property>
+  </action>
+  <action name="actionScaling">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/resize.png</normaloff>:/icons/icons/resize.png</iconset>
+   </property>
+   <property name="text">
+    <string>Scaling</string>
+   </property>
+  </action>
+  <action name="actionDown">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/Down.png</normaloff>:/icons/icons/Down.png</iconset>
+   </property>
+   <property name="text">
+    <string>Down</string>
+   </property>
+  </action>
+  <action name="actionUp">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/Up.png</normaloff>:/icons/icons/Up.png</iconset>
+   </property>
+   <property name="text">
+    <string>Up</string>
+   </property>
+  </action>
+  <action name="actionOpenFile">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/openImage.png</normaloff>:/icons/icons/openImage.png</iconset>
+   </property>
+   <property name="text">
+    <string>openFile</string>
+   </property>
+  </action>
+  <action name="actionOpenMovie">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/openMovic.png</normaloff>:/icons/icons/openMovic.png</iconset>
+   </property>
+   <property name="text">
+    <string>OpenMovie</string>
+   </property>
+  </action>
+  <action name="actionOpenFloder">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/openFolder.png</normaloff>:/icons/icons/openFolder.png</iconset>
+   </property>
+   <property name="text">
+    <string>OpenFloder</string>
+   </property>
+  </action>
+  <action name="actionOpctions">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/modify.PNG</normaloff>:/icons/icons/modify.PNG</iconset>
+   </property>
+   <property name="text">
+    <string>Opctions</string>
+   </property>
+  </action>
+  <action name="actionModify">
+   <property name="icon">
+    <iconset resource="buttonpicture.qrc">
+     <normaloff>:/icons/icons/DBModify.png</normaloff>:/icons/icons/DBModify.png</iconset>
+   </property>
+   <property name="text">
+    <string>Modify</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicWidget</class>
+   <extends>QWidget</extends>
+   <header>graphicwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="buttonpicture.qrc"/>
+ </resources>
+ <connections/>
+</ui>

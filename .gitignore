@@ -1,0 +1,13 @@
+vs_build/
+data/
+lib/
+third_party/
+__pycache__/
+*.pyc
+*.user
+*.gch
+.vs/
+model/
+build/
+include/
+data/
