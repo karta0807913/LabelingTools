@@ -11,7 +11,7 @@
 
 #include "netforward.h"
 #include "yolo_v2_output.h"
-#include "proto2/data.pb.h"
+#include <data.pb.h>
 
 const int predictBoxNum = 5;
 const int splitScreenNum = 13;
