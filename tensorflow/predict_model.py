@@ -24,24 +24,25 @@ label = tf_model.process_label(predict, img_width, img_height, 0.6)
 
 saver = tf.train.Saver()
 saver.restore(session, "./model/model.ckpt")
-
+data_size = tf_model.IMAGE_WIDTH * tf_model.IMAGE_HEIGHT * tf_model.IMAGE_DEPTH
 while True:
     connection, client_address = socket.accept()
     width = connection.recv(4)
     height = connection.recv(4)
     data = b""
     while True:
-        tmp = connection.recv(256*256*2)
+        tmp = connection.recv(256*256)
         data += tmp
         if len(tmp) == 0:
             data = b""
             break
         print("get data size %d" % len(data))
-        if len(data) < 256*256*3:
+        if len(data) < data_size:
             continue
-        elif len(data) > 256*256*3:
+        elif len(data) > data_size:
             print("wrong data size")
             data = b""
+            connection.close()
             break
         else:
             break
@@ -51,7 +52,7 @@ while True:
     width = np.frombuffer(width, dtype=np.uint32)
     height = np.frombuffer(height, dtype=np.uint32)
     data = np.frombuffer(data, dtype=np.uint8)
-    data = data.reshape((1, 256, 256, 3))
+    data = data.reshape((1, tf_model.IMAGE_WIDTH, tf_model.IMAGE_HEIGHT, tf_model.IMAGE_DEPTH))
 
     result = session.run(label,{
         image: data,

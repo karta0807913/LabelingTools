@@ -339,7 +339,6 @@ void MainWindow::modifyData()
         setImage(img, txtDir + filePathList[now_Index].baseName() + ".prototxt");
 
         updateUI();
-        /**/
 
         videoCapture.release();
         updateShortcut();
@@ -360,15 +359,11 @@ void MainWindow::videoPrvFrame()
     if(!videoCapture.isOpened() || now_Index - video_Step < 1)
         return;
 
-    // !!!lock the process, do not remove it!!!
-
     cv::Mat img = getVideoImage(now_Index -= video_Step);
 
 	predictionBoxAndDraw(img);
     setImage(img);
     updateUI();
-
-    // !!!lock the process, do not remove it!!!
 }
 
 void  MainWindow::prvImage()
@@ -430,13 +425,14 @@ void MainWindow::nextImage()
 
 void MainWindow::predictionBoxAndDraw(const cv::Mat &src_img)
 {
+	if (!ui->PredictImage->isChecked()) return;
 	QTcpSocket socket(this);
 	socket.connectToHost("127.0.0.1", 14333);
 	unsigned int width = 1;
 	unsigned int height = 1;
 
 	cv::Mat img;
-	cv::resize(src_img, img, cv::Size(256, 256));
+	cv::resize(src_img, img, cv::Size(416, 416));
 	if (socket.waitForConnected()) {
 		socket.write((const char *)&width, sizeof(unsigned int) / sizeof(const char));
 		socket.write((const char *)&height, sizeof(unsigned int) / sizeof(const char));
@@ -446,7 +442,7 @@ void MainWindow::predictionBoxAndDraw(const cv::Mat &src_img)
 	if (socket.waitForReadyRead()) {
 		QByteArray data =  socket.readAll();
 		auto float_data = (float *)data.data();
-		QString className("unknow");
+		QString className("airplane");
         std::map<QString, QColor>::iterator color = classMap.find(className);
 		if (color == classMap.end()) {
 			int R = qrand() % 255;
@@ -465,7 +461,7 @@ void MainWindow::predictionBoxAndDraw(const cv::Mat &src_img)
 			float x = float_data[i * 4 + 0];
 			float y = float_data[i * 4 + 1];
 			x = std::max(0.0f, x);
-			y = std::max(0.0f, x);
+			y = std::max(0.0f, y);
 			std::cout << x << " " << y << " " << w << " " << h << std::endl;
             ui->widget->addRectItem(x, y,  std::min(x+w, 1.0f), std::min(y+h, 1.0f), color->second, classlist);
 		}
@@ -511,103 +507,107 @@ void MainWindow::saveFile()
     if(!saveDir_img.exists())
         QDir().mkdir(saveDir_img.path());
 
-    QDir saveDir_xml(saveDir.path() + "/xml");
-    if(!saveDir_xml.exists())
-        QDir().mkdir(saveDir_xml.path());
+	int originWidth = ui->widget->getOriginImage().cols,
+		originHeight = ui->widget->getOriginImage().rows;
 
-    QFile txtFile;
-    if(videoCapture.isOpened())
-    {
-        txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + "_" + QString::number(now_Index) + ".prototxt");
-    }
-    else
-    {
-        txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + ".prototxt");
-    }
+	RectData::PictureData pictureData;
+	pictureData.set_width(originWidth);
+	pictureData.set_height(originHeight);
 
-    if(txtFile.open(QIODevice::WriteOnly)){
-        QTextStream out(&txtFile);
+	bool have_item = false;
+	foreach(QGraphicsItem *item, graphicItem) {
+		if (item->type() == SocketGraphicsItem::Type) {
+			SocketGraphicsItem *rectItem = static_cast<SocketGraphicsItem*>(item);
+			QList<QString> classList = rectItem->getClasses();
+			if (!classList.empty())
+			{
+				/* save to txt */
+				QRectF rect = rectItem->mapRectToScene(rectItem->boundingRect());
 
-        int originWidth  = ui->widget->getOriginImage().cols,
-            originHeight = ui->widget->getOriginImage().rows;
+				int   x = (float)rect.x() * ((float)originWidth / ui->widget->rect().width()),
+					y = (float)rect.y() * ((float)originHeight / ui->widget->rect().height()),
+					w = (float)rect.width() * ((float)originWidth / ui->widget->rect().width()),
+					h = (float)rect.height() * ((float)originHeight / ui->widget->rect().height());
+				
+				if (x + w <= 0)
+					continue;
+				if (x > originWidth)
+					continue;
+				if (y > originHeight)
+					continue;
+				if (y + h <= 0)
+					continue;
+				if (x < 0)
+					x = 0;
+				if (x + w > originWidth)
+					w = (originWidth - x);
+				if (y < 0)
+					y = 0;
+				if (y + h > originHeight)
+					h = (originHeight - y);
 
-        RectData::PictureData pictureData;
-        pictureData.set_width(originWidth);
-        pictureData.set_height(originHeight);
+				have_item = true;
+				RectData::ObjectParam* object_param = pictureData.add_object_parameter();
+				object_param->set_xmin(x);
+				object_param->set_ymin(y);
+				object_param->set_xmax(x + w);
+				object_param->set_ymax(y + h);
 
-        foreach (QGraphicsItem *item, graphicItem) {
-            if(item->type() == SocketGraphicsItem::Type){
-                SocketGraphicsItem *rectItem = static_cast<SocketGraphicsItem*>(item);
-                QList<QString> classList = rectItem->getClasses();
-                if(!classList.empty())
-                {
-                    /* save to txt */
-                    QRectF rect = rectItem->mapRectToScene(rectItem->boundingRect());
+				for (auto iterator = classList.begin(); iterator != classList.end(); ++iterator) {
+					object_param->add_tag(iterator->toStdString());
+				}
+			}
+		}
+	}
+	QFile txtFile;
+	if (videoCapture.isOpened())
+	{
+		txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + "_" + QString::number(now_Index) + ".prototxt");
+	}
+	else
+	{
+		txtFile.setFileName(saveDir_txt.path() + "/" + saveFileName + ".prototxt");
+	}
 
-                    int   x = (float)rect.x() * ((float)originWidth / ui->widget->rect().width()),
-                            y = (float)rect.y() * ((float)originHeight / ui->widget->rect().height()),
-                            w = (float)rect.width() * ((float)originWidth / ui->widget->rect().width()),
-                            h = (float)rect.height() * ((float)originHeight / ui->widget->rect().height());
+	ui->widget->deleteAllItems();
+	if (have_item) {
+		if (txtFile.open(QIODevice::WriteOnly)) {
+			QTextStream out(&txtFile);
 
-                    if(x < 0)
-                        x = 0;
-                    if(x > originWidth)
-                        x = originWidth;
-                    if(x + w > originWidth)
-                        w = (originWidth - x);
-                    if(y < 0)
-                        y = 0;
-                    if(y > originHeight)
-                        y = originHeight;
-                    if(y + h > originHeight)
-                        h =(originHeight - y);
+			std::string tmp;
+			google::protobuf::TextFormat::PrintToString(pictureData, &tmp); //message to prototxt --ascii
+			out << QString(tmp.c_str());
 
-                    RectData::ObjectParam* object_param = pictureData.add_object_parameter();
-                    object_param->set_xmin(x);
-                    object_param->set_ymin(y);
-                    object_param->set_xmax(x + w);
-                    object_param->set_ymax(y + h);
+			txtFile.close();
+		}
 
-                    for(auto iterator = classList.begin(); iterator != classList.end(); ++iterator){
-                        object_param->add_tag(iterator->toStdString());
-                    }
-                }
-            }
-        }
-        std::string tmp;
-        google::protobuf::TextFormat::PrintToString(pictureData, &tmp); //message to prototxt --ascii
-        out << QString(tmp.c_str());
+		if (videoCapture.isOpened()) {
+			cv::imwrite((saveDir_img.path() + "/" +
+				saveFileName + "_" + QString::number(now_Index) + ".png").toLocal8Bit().data(),
+				ui->widget->getOriginImage());
+		}
+		else
+		{
+			cv::imwrite((saveDir_img.path() + "/" +
+				saveFileName + ".png").toLocal8Bit().data(),
+				ui->widget->getOriginImage());
+		}
 
-        txtFile.close();
 
-    }
-    if(videoCapture.isOpened()){
-        cv::imwrite((saveDir_img.path() + "/" +
-                     saveFileName + "_" + QString::number(now_Index) + ".png").toLocal8Bit().data(),
-                     ui->widget->getOriginImage());
-    }
-    else
-    {
-        cv::imwrite((saveDir_img.path() + "/" +
-                     saveFileName + ".png").toLocal8Bit().data(),
-                     ui->widget->getOriginImage());
-    }
-
-    ui->widget->deleteAllItems();
-
-    if(videoCapture.isOpened())
-    {
-        videoNexFrame();
-    }
-    else if(!filePathList.empty())
-    {
-        nextImage();
-    }
-    else
-    {
-        fileName="";
-        openFile();
-    }
+		if (videoCapture.isOpened())
+		{
+			videoNexFrame();
+		}
+		else if (!filePathList.empty())
+		{
+			nextImage();
+		}
+		else
+		{
+			fileName = "";
+			openFile();
+		}
+	}
 }
 
 void MainWindow::addItem()

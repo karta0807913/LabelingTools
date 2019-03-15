@@ -20,7 +20,7 @@
 #include <iostream>
 #include <mutex>
 
-#include "data.pb.h"
+#include <data.pb.h>
 #include "netforward.h"
 #include "graphicscene.h"
 #include "functor.h"

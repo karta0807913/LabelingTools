@@ -12,12 +12,11 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 find_package(Protobuf REQUIRED)
 find_package(OpenCV REQUIRED)
 
-find_package(Qt REQUIRED)
+#find_package(Qt REQUIRED VERSION 5)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Xml REQUIRED)
 find_package(Qt5Network REQUIRED)
-
 
 set(SOURCE_FILE
   main.cpp
@@ -58,7 +57,14 @@ set(QT_FORMS
   buttonpicture.qrc
   )
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS proto2/data.proto)
+if(WIN32) 
+	set(PROTO_HDRS proto2/data.pb.h)
+	set(PROTO_SRCS proto2/data.pb.cc)
+	include_directories(proto2)
+endif(WIN32)
+if(UNIX)
+   protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS proto2/data.proto)
+endif(UNIX)
 message("${PROTO_SRCS}")
 message("${PROTO_HDRS}")
 message("PROTOBUF INCLUDES ${PROTOBUF_INCLUDE_DIR}")
