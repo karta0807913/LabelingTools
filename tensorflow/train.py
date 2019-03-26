@@ -34,11 +34,13 @@ def preprocess2iterator(dataset, batch_size):
     return batch.make_initializable_iterator()
 
 filename="./data/out.recored"
+test_filename = "./data/test.recored"
 batch_size=100
 
 session = tf.Session()
 
 dataset = tf.data.TFRecordDataset(filename)
+test_dataset = tf.data.TFRecordDataset(test_filename)
 iterator = preprocess2iterator(dataset, 50)
 
 handle = session.run(iterator.string_handle())
@@ -56,7 +58,7 @@ obj_loss, no_obj_loss, loss_xy, loss_wh = tf_model.loss(predict, label)
 optmz = tf.train.AdamOptimizer(3e-4)
 train_op = optmz.minimize(obj_loss + no_obj_loss * 0.7 + 2 * (loss_xy + loss_wh))
 
-test_iterator = preprocess2iterator(dataset, 1)
+test_iterator = preprocess2iterator(test_dataset, 1)
 test_handle = session.run(test_iterator.string_handle())
 
 init=tf.global_variables_initializer()
@@ -65,14 +67,20 @@ session.run(iterator.initializer)
 session.run(test_iterator.initializer)
 
 loss_collection = []
-def train(filename, batch_size, times, show_step):
-    # 720 1080
+def train(filename, batch_size, times, show_step, test_step=0):
     for i in range(times):
         try:
             losses = session.run([obj_loss, no_obj_loss, loss_xy, loss_wh, train_op], {input_handle: handle})
             if (i % show_step) == 0:
                 loss_collection.append([i, losses[0], losses[1], losses[2], losses[3]])
                 print("step: %d\nobj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (i, losses[0], losses[1], losses[2], losses[3]))
+
+            if not test_step < 1 and i % test_step == 0:
+                try:
+                    session.run([obj_loss, no_obj_loss, loss_xy, loss_wh, train_op], {input_handle: test_handle})
+                    print("test:result: obj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (losses[0], losses[1], losses[2], losses[3]))
+                except tf.errors.OutOfRangeError as e:
+                    session.run(test_iterator.initializer)
         except tf.errors.OutOfRangeError as e:
             session.run(iterator.initializer)
 
@@ -93,5 +101,5 @@ def test():
 if __name__ == "__main__":
     saver = tf.train.Saver()
     # saver.restore(session, "./model/model.ckpt")
-    train(filename, 50, 4000, 10)
+    train(filename, 50, 4000, 10, 1)
     saver.save(session, "./model/model.ckpt")

@@ -14,16 +14,16 @@ def make_proto(input_dir, output_dir):
         root = tree.getroot()
         label = data_pb2.PictureData()
         size = root.find("size")
-        label.height = int(size.find("height").text)
-        label.width = int(size.find("width").text)
+        label.height = int(size.find("height").text.split(".")[0])
+        label.width = int(size.find("width").text.split(".")[0])
         for obj in root.findall("object"):
             rect = label.object_parameter.add()
             box = obj.find("bndbox")
-            rect.tag.append(obj.find("name").text)
-            rect.xmin = int(box.find("xmin").text)
-            rect.ymin = int(box.find("ymin").text)
-            rect.xmax = int(box.find("xmax").text)
-            rect.ymax = int(box.find("ymax").text)
+            rect.tag.append(obj.find("name").text.split(".")[0])
+            rect.xmin = int(box.find("xmin").text.split(".")[0])
+            rect.ymin = int(box.find("ymin").text.split(".")[0])
+            rect.xmax = int(box.find("xmax").text.split(".")[0])
+            rect.ymax = int(box.find("ymax").text.split(".")[0])
 
         proto = os.path.splitext(xml)[0] + ".prototxt"
         open(os.path.join(output_dir, proto), "w").write(google.protobuf.text_format.MessageToString(label))
