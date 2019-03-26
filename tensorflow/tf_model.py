@@ -28,25 +28,25 @@ def model (image):
         image=make_scope(image, "layer4", 128)
         image=make_scope(image, "layer5", 256)
 
-        conv6 = tf.keras.layers.Conv2D(256, (3, 3), padding="same", name="layer6_conv")
+        conv6 = tf.keras.layers.Conv2D(512, (3, 3), padding="same", name="layer6_conv")
         conv6 = conv6(image)
         leaky6 = tf.keras.layers.LeakyReLU(name="layer6_leaky")
         leaky6 = leaky6(conv6)
         pool6 = tf.keras.layers.MaxPool2D(padding="same", strides=(1,1), name="layer6_pool")
         pool6 = pool6(leaky6)
 
-        conv7 = tf.keras.layers.Conv2D(128, (3, 3), padding="same", name="layer7_conv")
+        conv7 = tf.keras.layers.Conv2D(1024, (3, 3), padding="same", name="layer7_conv")
         conv7 = conv7(pool6)
         leaky7 = tf.keras.layers.LeakyReLU(name="layer7_leaky")
         leaky7 = leaky7(conv7)
 
 
-        conv8 = tf.keras.layers.Conv2D(64, (3, 3), padding="same", name="layer8_conv")
+        conv8 = tf.keras.layers.Conv2D(1024, (3, 3), padding="same", name="layer8_conv")
         conv8 = conv8(leaky7)
         leaky8 = tf.keras.layers.LeakyReLU(name="layer8_leaky")
         leaky8 = leaky8(conv8)
 
-        conv9 = tf.keras.layers.Conv2D(5, (3, 3), padding="same", name="layer9_conv")
+        conv9 = tf.keras.layers.Conv2D(5, (1, 1), padding="same", name="layer9_conv")
         conv9 = conv9(leaky8)
 
     return conv9
