@@ -21,7 +21,7 @@ def model (image):
         pool = tf.keras.layers.MaxPool2D(name=name+"_pool")
         return pool(leaky)
 
-    with tf.name_scope("conv_416x416_to_7x7"):
+    with tf.name_scope("conv_416x416_to_13x13"):
         image=make_scope(image, "layer1", 16)
         image=make_scope(image, "layer2", 32)
         image=make_scope(image, "layer3", 64)
@@ -79,7 +79,8 @@ def loss(predict, labels):
     answer_has=labels[:,:,:,0:1]
     answer_pos=labels[:,:,:,1:5]
 
-    mask = tf.cast(tf.reshape(answer_has, [-1, GRID_H, GRID_W]), tf.bool)
+    reshaped = tf.reshape(answer_has, [-1, GRID_H, GRID_W])
+    mask = tf.cast(reshaped, tf.bool)
 
     answer_pos = tf.boolean_mask(answer_pos, mask)
 

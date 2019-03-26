@@ -40,7 +40,6 @@ def make_record(root_folder, out_filename, img_w=416, img_h=416, grid_w=13, grid
             google.protobuf.text_format.Merge(open(label_file, 'r').read(), label)
 
             label_matrix = crop_util.make_yolo_format(label, grid_w, grid_h)
-
             image_raw = img.tostring()
             label_raw = label_matrix.tostring()
 
@@ -49,6 +48,20 @@ def make_record(root_folder, out_filename, img_w=416, img_h=416, grid_w=13, grid
                 "label": tf.train.Feature(bytes_list=tf.train.BytesList(value=[label_raw]))
             }))
 
+            writer.write(example.SerializeToString())
+
+
+            img_r = np.random.random(img_w * img_h * 3) * 4 - 2
+            img_r = np.reshape(img_r, (img_w, img_h, 3))
+            img_r = img + img_r
+            img_r = np.maximum(img_r, 0)
+            img_r = np.minimum(img_r, 255)
+            img_r = np.cast[np.int8](img_r)
+            image_raw = img_r.tostring()
+            example = tf.train.Example(features=tf.train.Features(feature={
+                "image": tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_raw])),
+                "label": tf.train.Feature(bytes_list=tf.train.BytesList(value=[label_raw]))
+            }))
             writer.write(example.SerializeToString())
 
             img_u, label_u = crop_util.flip_up_down(img, label)

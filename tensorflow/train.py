@@ -28,7 +28,7 @@ def _parser_(serialized_example):
     return image, label
 
 def preprocess2iterator(dataset, batch_size):
-    dataset = dataset.shuffle(100 * batch_size)
+    dataset = dataset.shuffle(1000*batch_size)
     dataset = dataset.map(_parser_)
     batch = dataset.batch(batch_size)
     return batch.make_initializable_iterator()
@@ -54,7 +54,7 @@ image, label = input_iterator.get_next()
 predict = tf_model.model(image)
 obj_loss, no_obj_loss, loss_xy, loss_wh = tf_model.loss(predict, label)
 optmz = tf.train.AdamOptimizer(3e-4)
-train_op = optmz.minimize(obj_loss * 2 + no_obj_loss + (loss_xy + loss_wh))
+train_op = optmz.minimize(obj_loss + no_obj_loss * 0.7 + 2 * (loss_xy + loss_wh))
 
 test_iterator = preprocess2iterator(dataset, 1)
 test_handle = session.run(test_iterator.string_handle())
@@ -73,7 +73,7 @@ def train(filename, batch_size, times, show_step):
             if (i % show_step) == 0:
                 loss_collection.append([i, losses[0], losses[1], losses[2], losses[3]])
                 print("step: %d\nobj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (i, losses[0], losses[1], losses[2], losses[3]))
-        except Exception as e:
+        except tf.errors.OutOfRangeError as e:
             session.run(iterator.initializer)
 
     los = session.run(tf.transpose(loss_collection))
@@ -81,7 +81,7 @@ def train(filename, batch_size, times, show_step):
     plt.plot(los[0], los[2], "--o")
     plt.plot(los[0], los[3], "--o")
     plt.plot(los[0], los[4], "--o")
-    plt.ylim(top=3)
+    plt.ylim(top=1)
     plt.ylim(bottom=0)
     plt.show()
 
@@ -93,5 +93,5 @@ def test():
 if __name__ == "__main__":
     saver = tf.train.Saver()
     # saver.restore(session, "./model/model.ckpt")
-    train(filename, 20, 2000, 10)
+    train(filename, 50, 4000, 10)
     saver.save(session, "./model/model.ckpt")
