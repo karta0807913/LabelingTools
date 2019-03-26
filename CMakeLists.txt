@@ -11,6 +11,9 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
 find_package(Protobuf REQUIRED)
 find_package(OpenCV REQUIRED)
+if(OpenCV_VERSION VERSION_LESS "4.0")
+	message( FATAL_ERROR "opencv version must upper then 4" )
+endif()
 
 #find_package(Qt REQUIRED VERSION 5)
 find_package(Qt5Core REQUIRED)
