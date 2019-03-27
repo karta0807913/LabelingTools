@@ -16,8 +16,10 @@ def model (image):
     def make_scope(_input, name, conv_fitter):
         conv = tf.keras.layers.Conv2D(conv_fitter, (3, 3), padding="same", name=name+"_conv")
         conv = conv(_input)
+        batch_norm = tf.keras.layers.BatchNormalization(name=name+"_batch_norm")
+        batch_norm = batch_norm(conv)
         leaky = tf.keras.layers.LeakyReLU(name=name+"_leaky")
-        leaky = leaky(conv)
+        leaky = leaky(batch_norm)
         pool = tf.keras.layers.MaxPool2D(name=name+"_pool")
         return pool(leaky)
 
@@ -30,21 +32,27 @@ def model (image):
 
         conv6 = tf.keras.layers.Conv2D(512, (3, 3), padding="same", name="layer6_conv")
         conv6 = conv6(image)
+        batch6 = tf.keras.layers.BatchNormalization(name="layer6_batch_norm")
+        batch6 = batch6(conv6)
         leaky6 = tf.keras.layers.LeakyReLU(name="layer6_leaky")
-        leaky6 = leaky6(conv6)
+        leaky6 = leaky6(batch6)
         pool6 = tf.keras.layers.MaxPool2D(padding="same", strides=(1,1), name="layer6_pool")
         pool6 = pool6(leaky6)
 
         conv7 = tf.keras.layers.Conv2D(1024, (3, 3), padding="same", name="layer7_conv")
         conv7 = conv7(pool6)
+        batch7 = tf.keras.layers.BatchNormalization(name="layer7_batch_norm")
+        batch7 = batch7(conv7)
         leaky7 = tf.keras.layers.LeakyReLU(name="layer7_leaky")
-        leaky7 = leaky7(conv7)
+        leaky7 = leaky7(batch7)
 
 
-        conv8 = tf.keras.layers.Conv2D(1024, (3, 3), padding="same", name="layer8_conv")
+        conv8 = tf.keras.layers.Conv2D(512, (3, 3), padding="same", name="layer8_conv")
         conv8 = conv8(leaky7)
+        batch8 = tf.keras.layers.BatchNormalization(name="layer8_batch_norm")
+        batch8 = batch8(conv8)
         leaky8 = tf.keras.layers.LeakyReLU(name="layer8_leaky")
-        leaky8 = leaky8(conv8)
+        leaky8 = leaky8(batch8)
 
         conv9 = tf.keras.layers.Conv2D(5, (1, 1), padding="same", name="layer9_conv")
         conv9 = conv9(leaky8)
