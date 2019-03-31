@@ -71,16 +71,20 @@ session.run(test_iterator.initializer)
 
 loss_collection = []
 def train(filename, times, show_step, test_step=0, save_step=3000):
-    for i in range(1, times):
+    basic_steps = session.run([global_step])[0]
+    i_from = basic_steps
+    i_to = basic_steps + times
+    while i_from < i_to:
         try:
-            losses = session.run([obj_loss, no_obj_loss, loss_xy, loss_wh, train_op], {input_handle: handle})
-            if (i % show_step) == 0:
-                loss_collection.append([i, losses[0], losses[1], losses[2], losses[3]])
-                print("step: %d\nobj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (i, losses[0], losses[1], losses[2], losses[3]))
+            losses = session.run([obj_loss, no_obj_loss, loss_xy, loss_wh, global_step, train_op], {input_handle: handle})
+            i_from = losses[4]
+            if (losses[4] % show_step) == 0:
+                loss_collection.append([i_from, losses[0], losses[1], losses[2], losses[3]])
+                print("step: %d\nobj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (i_from, losses[0], losses[1], losses[2], losses[3]))
 
-            if i % save_step == 0:
+            if losses[4] % save_step == 0:
                 saver.save(session, "./model/model.ckpt", global_step)
-            if not test_step < 1 and i % test_step == 0:
+            if not test_step < 1 and i_from % test_step == 0:
                 try:
                     losses = session.run([obj_loss, no_obj_loss, loss_xy, loss_wh], {input_handle: test_handle})
                     print("test:result: obj_loss: %f, no_obj_loss: %f, \nloss_xy: %f, loss_wh: %f\n" % (losses[0], losses[1], losses[2], losses[3]))
@@ -96,7 +100,7 @@ def train(filename, times, show_step, test_step=0, save_step=3000):
     plt.plot(los[0], los[4], "--o")
     plt.ylim(top=1)
     plt.ylim(bottom=0)
-    # plt.show()
+    plt.show()
 
 def test():
     loss, img, pp, ll = session.run([[obj_loss, no_obj_loss, loss_xy, loss_wh], image, predict, label], {input_handle: test_handle})
@@ -105,6 +109,6 @@ def test():
 
 if __name__ == "__main__":
     saver = tf.train.Saver()
-    saver.restore(session, "./model/model.ckpt-3000")
+    saver.restore(session, "./model/model.ckpt-161913")
     train(filename, 400000, 10, 1000)
     saver.save(session, "./model/model.ckpt", global_step)

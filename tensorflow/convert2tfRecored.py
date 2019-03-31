@@ -4,6 +4,7 @@ import numpy as np
 import threading
 import crop_util
 import data_pb2
+import time
 import cv2
 import sys
 import os
@@ -32,7 +33,7 @@ def get_data_list(root_folder):
     return image_list, proto_list
 
 count = 0
-max_thread_count = 10
+max_thread_count = 3
 thread_count_lock = threading.BoundedSemaphore(max_thread_count)
 write_deque = deque()
 done = False
@@ -41,9 +42,22 @@ def push_example(example):
     write_deque.append(example)
 
 def write_example(record_writer):
-    while len(write_deque) != 0 or not done:
-        record_writer.write(write_deque.popleft().SerializeToString())
-        count += 1
+    global count
+    global done
+    try:
+        while not done:
+            if len(write_deque) != 0:
+                record_writer.write(write_deque.popleft().SerializeToString())
+                if count % 1000 == 0:
+                    print("flushing data")
+                    print(len(write_deque))
+                    record_writer.flush()
+                count += 1
+            else:
+                time.sleep(10)
+    except Exception as e:
+        print(e)
+        exit(1)
 
 def make_one_record(image_file, label_file, crop=False, img_w=416, img_h=416, grid_w=13, grid_h=13):
     global count
@@ -110,10 +124,11 @@ def make_one_record(image_file, label_file, crop=False, img_w=416, img_h=416, gr
         thread_count_lock.release()
 
 def make_record(root_folder, out_filename, crop=False, img_w=416, img_h=416, grid_w=13, grid_h=13):
+    global done
     images, labels = get_data_list(root_folder)
 
     with tf.python_io.TFRecordWriter(out_filename) as writer:
-        write_thread = threading.Thread(None, write_example, args=(writer))
+        write_thread = threading.Thread(None, write_example, args=(writer,))
         write_thread.start()
         for image_file, label_file in zip(images, labels):
             thread_count_lock.acquire()
