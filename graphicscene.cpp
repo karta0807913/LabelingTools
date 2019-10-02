@@ -110,6 +110,7 @@ void GraphicScene::addItem(SocketGraphicsItem *item, QList<QString> &classList)
             this, SLOT(mouseDoubleClickSignal(SocketGraphicsItem*)));
 
     item->setList(classList);
+	item->setParent(this);
     QGraphicsScene::addItem(item);
 }
 

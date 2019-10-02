@@ -2,16 +2,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#define YOLO_V2
-#ifndef YOLO_V2
-#include "yolo_output.h"
-#else
-#include "yolo_v2_output.h"
-#endif
-
-//typedef yolo_v2::BASE_YOLO_2_FUNCTOR YOLO_BOX_FUNCTION;
-// typedef yolo_v2::SOFT_NMS YOLO_FUNCTOR;
-
 #include <QRect>
 #include <QTime>
 #include "socketgraphicsitem.h"

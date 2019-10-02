@@ -30,7 +30,7 @@ class Functor
 {
 public:
     Functor(SCENE*){}
-    virtual SocketGraphicsItem* operator()(QColor , QGraphicsSceneMouseEvent *, Int2Type<MouseMode::Press>){ return nullptr;}
+    virtual SocketGraphicsItem* operator()(QColor , QGraphicsSceneMouseEvent *, Int2Type<MouseMode::Press>){ return nullptr; }
     virtual void operator()(SocketGraphicsItem *&, QGraphicsSceneMouseEvent *, Int2Type<MouseMode::Move>){}
     virtual void operator()(SocketGraphicsItem *&, QGraphicsSceneMouseEvent *, Int2Type<MouseMode::Relese>){}
     virtual void operator()(SocketGraphicsItem *&, Int2Type<MouseMode::ChangeMode>){}

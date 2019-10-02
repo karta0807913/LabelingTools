@@ -33,7 +33,7 @@ def preprocess2iterator(dataset, batch_size):
     batch = dataset.batch(batch_size)
     return batch.make_initializable_iterator()
 
-filename="./data/out.recored"
+filename="./data/out1.recored"
 test_filename = "./data/test.recored"
 batch_size=50
 
@@ -58,7 +58,7 @@ input_iterator = tf.data.Iterator.from_string_handle(
 image, label = input_iterator.get_next()
 predict = tf_model.model(image)
 obj_loss, no_obj_loss, loss_xy, loss_wh = tf_model.loss(predict, label)
-optmz = tf.train.AdamOptimizer(3e-4)
+optmz = tf.train.AdamOptimizer(1e-4)
 train_op = optmz.minimize(obj_loss + no_obj_loss * 0.7 + 2 * (loss_xy + loss_wh), global_step=global_step)
 
 test_iterator = preprocess2iterator(test_dataset, 1)
@@ -109,6 +109,6 @@ def test():
 
 if __name__ == "__main__":
     saver = tf.train.Saver()
-    saver.restore(session, "./model/model.ckpt-161913")
+    saver.restore(session, "./model/model.ckpt-216000")
     train(filename, 400000, 10, 1000)
     saver.save(session, "./model/model.ckpt", global_step)

@@ -14,18 +14,18 @@ class SocketGraphicsItem : public QObject, public QGraphicsRectItem
 
 public:
 
-	enum {
-		Type=UserType+1
-	};
+    enum {
+            Type=UserType+1
+    };
     explicit SocketGraphicsItem(QObject *parent = 0);
     void setList(QList<QString> &classList);
     QList<QString> getClasses();
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
     void setRect(const QRectF &rect);
     void setRect(qreal x, qreal y, qreal w, qreal h);
-	int type() const override {
-		return Type;
-	}
+    int type() const override {
+            return Type;
+    }
 //    void setPos(qreal x, qreal y);
 //    void setPos(const QPointF &pos);
      ~SocketGraphicsItem();

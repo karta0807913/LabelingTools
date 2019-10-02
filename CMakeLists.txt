@@ -4,6 +4,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 11)
+# SET(BUILD_SHARED_LIBS OFF)
 
 project(LabelingTools)
 
@@ -15,7 +16,6 @@ if(OpenCV_VERSION VERSION_LESS "4.0")
 	message( FATAL_ERROR "opencv version must upper then 4" )
 endif()
 
-#find_package(Qt REQUIRED VERSION 5)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Xml REQUIRED)

@@ -15,10 +15,10 @@ img_width = tf.placeholder(tf.float32, shape=[])
 img_height = tf.placeholder(tf.float32, shape=[])
 
 predict = tf_model.model(image)
-label = tf_model.process_label(predict, img_width, img_height, 0.55)
+label = tf_model.process_label(predict, img_width, img_height, 0.6)
 
 saver = tf.train.Saver()
-saver.restore(session, "./model/model.ckpt")
+saver.restore(session, "./model/imagenet+custome.ckpt-171000")
 
 def predict_video(input_file, output_file):
     cap = cv2.VideoCapture(input_file)
@@ -26,7 +26,7 @@ def predict_video(input_file, output_file):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     img_fps = cap.get(cv2.CAP_PROP_FPS)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    print(" %s %s %s" % (img_fps, img_width, img_height))
+    # print(" %s %s %s" % (img_fps, img_width, img_height))
     out = cv2.VideoWriter(output_file, fourcc, img_fps, (640,480))
     out = cv2.VideoWriter(output_file, fourcc, img_fps, (width, height))
 
@@ -55,6 +55,7 @@ def predict_video(input_file, output_file):
         if lc == 0:
             last_predict = [[], [], [], []]
         x, y, w, h = predict_label
+        # print(w)
         for i in range(len(x)):
             frame = cv2.rectangle(frame, (x[i], y[i]), (x[i]+w[i], y[i]+h[i]), 2)
         # cv2.imshow('frame',frame)
