@@ -17,6 +17,7 @@
 #include "socketgraphicsitem.h"
 #include <QDomDocument>
 #include <QDebug>
+#include <vector>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -178,10 +179,10 @@ void MainWindow::openFile()
 {
     //QString selfilter = tr("IMG (*.jpg *.jpeg *.png)");
     QString imagePath = QFileDialog::getOpenFileName(this, "SelectImage", filePath,
-                                                     "All files (*.jpg *.jpeg *.png *.bmp *.mp4 *.avi *.wmv *.mov);;\
+                                                     "All files (*.jpg *.jpeg *.png *.bmp *.mp4 *.avi *.wmv *.mov *asf);;\
                                                       JPEG (*.jpg *.jpeg);;PNG (*.png);;\
                                                       BMP (*.bmp);;\
-                                                      Movie Files(*.mp4 *.avi *.wmv *.mov)");
+                                                      Movie Files(*.mp4 *.avi *.wmv *.mov *.asf)");
 
     if(imagePath == "")
         return;
@@ -433,19 +434,23 @@ void MainWindow::predictionBoxAndDraw(const cv::Mat &src_img)
 
 	cv::Mat img;
 	cv::resize(src_img, img, cv::Size(416, 416));
+    std::vector<uchar> buf;
 	if (socket.waitForConnected()) {
-		socket.write((const char *)&width, sizeof(unsigned int) / sizeof(const char));
-		socket.write((const char *)&height, sizeof(unsigned int) / sizeof(const char));
-		socket.write((const char *)img.data, img.cols * img.rows * img.elemSize());
+        cv::imencode(".jpeg", img, buf);
+        size_t size = buf.size();
+        socket.write((const char *)&size, sizeof(size));
+        std::cout << size << std::endl;
+		socket.write((const char *)buf.data(), size);
 		socket.flush();
 	}
 	if (socket.waitForReadyRead()) {
+        std::cout << "read something" << std::endl;
 		QByteArray data =  socket.readAll();
 		auto float_data = (float *)data.data();
-		QString className("airplane");
+		QString className("prediect_class");
         std::map<QString, QColor>::iterator color = classMap.find(className);
 		if (color == classMap.end()) {
-			int R = qrand() % 255;
+            int R = qrand() % 255;
             int G = qrand() % 255;
             int B = qrand() % 255;
             classMap[className] = QColor(R, G, B);
@@ -455,17 +460,22 @@ void MainWindow::predictionBoxAndDraw(const cv::Mat &src_img)
 		}
 		QList<QString>classlist;
 		classlist.append(className);
+        std::cout << data.length() << std::endl;
 		for (int i = 0; i < data.length() / sizeof(float) / 4; ++i) {
-		    float w = float_data[i * 4 + 2];
-			float h = float_data[i * 4 + 3];
-			float x = float_data[i * 4 + 0];
-			float y = float_data[i * 4 + 1];
+		    float w = float_data[i * 4 + 0];
+			float h = float_data[i * 4 + 1];
+			float x = float_data[i * 4 + 2];
+			float y = float_data[i * 4 + 3];
+            x = x - w / 2;
+            y = y - h / 2;
 			x = std::max(0.0f, x);
 			y = std::max(0.0f, y);
-			std::cout << x << " " << y << " " << w << " " << h << std::endl;
+			std::cout << w << " " << h << " " << x << " " << y << std::endl;
             ui->widget->addRectItem(x, y,  std::min(x+w, 1.0f), std::min(y+h, 1.0f), color->second, classlist);
 		}
-	}
+	} else {
+        std::cout << "nothing to read" << std::endl;
+    }
 }
 
 void MainWindow::saveFile()
